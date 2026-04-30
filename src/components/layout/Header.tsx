@@ -124,82 +124,13 @@ export function Header() {
         <input id="catalog-menu-toggle" type="checkbox" className="peer sr-only" />
 
         {/* ── MOBILE LAYOUT (< lg) ────────────────────────── */}
-        <div className="lg:hidden">
-          {/* Row 1: Logo · City · Auth */}
-          <div className="flex items-center gap-2 px-4 pt-5 pb-1">
-            <Logo />
-
-            {/* City compact */}
-            <div className="relative ml-1">
-              <button
-                type="button"
-                onClick={() => setIsCityOpen((v) => !v)}
-                className="flex items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2.5 py-2 text-xs font-semibold text-zinc-700 shadow-sm"
-              >
-                <span className="text-[hsl(var(--otiva-orange))] text-sm leading-none">⌖</span>
-                <span className="max-w-[80px] truncate">{cityLabel}</span>
-                <span className="text-zinc-400 text-xs">⌄</span>
-              </button>
-              {isCityOpen && (
-                <div className="fixed inset-x-0 bottom-0 z-[160] max-h-[82vh] overflow-hidden rounded-t-3xl border border-zinc-200 bg-white shadow-2xl">
-                  <div className="flex justify-center pt-3">
-                    <div className="h-1 w-10 rounded-full bg-zinc-200" />
-                  </div>
-                  <div className="border-b border-zinc-100 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-base font-semibold text-zinc-950">Выберите город</p>
-                      <button type="button" onClick={() => setIsCityOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">×</button>
-                    </div>
-                    <input
-                      value={cityQuery}
-                      onChange={(e) => setCityQuery(e.target.value)}
-                      placeholder="Найти город"
-                      className="mt-3 h-11 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-sm outline-none focus:border-[hsl(var(--otiva-blue))]"
-                      autoFocus
-                    />
-                  </div>
-                  <div className="p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">Популярные</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {popularCities.map((city) => (
-                        <button key={city} type="button" onClick={() => chooseCity(city)}
-                          className={`rounded-full px-3 py-2 text-sm font-semibold transition ${selectedCity === city ? "bg-[hsl(var(--otiva-blue))] text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-950 hover:text-white"}`}>
-                          {city}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="max-h-[48vh] overflow-y-auto px-2 pb-6">
-                    {filteredCities.map((city) => (
-                      <button key={city} type="button" onClick={() => chooseCity(city)}
-                        className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm transition ${selectedCity === city ? "bg-zinc-950 font-semibold text-white" : "text-zinc-700 hover:bg-zinc-100"}`}>
-                        <span>{city}</span>
-                        {selectedCity === city && <span>✓</span>}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1" />
-
-            {/* Auth button */}
-            {!user ? (
-              <Link href="/login"
-                className="flex h-9 items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-800 shadow-sm">
-                Войти
-              </Link>
-            ) : null}
-          </div>
-
-          {/* Row 2: Search */}
-          <div className="px-4 pt-2 pb-3">
-            <form onSubmit={handleSearch} className="flex h-10 items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 shadow-inner shadow-zinc-950/[0.03]">
+        <div className="px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.75rem)] lg:hidden">
+          <div className="flex items-center gap-2">
+            <form onSubmit={handleSearch} className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 shadow-inner shadow-zinc-950/[0.03]">
               <span className="text-zinc-400">⌕</span>
               <input
                 className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-400"
-                placeholder="Поиск по объявлениям"
+                placeholder={`Поиск в ${cityLabel}`}
                 aria-label="Поиск по объявлениям"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -210,8 +141,57 @@ export function Header() {
                 </button>
               )}
             </form>
+            <button
+              type="button"
+              onClick={() => setIsCityOpen((v) => !v)}
+              className="flex h-11 max-w-[112px] shrink-0 items-center gap-1 rounded-2xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 shadow-sm"
+            >
+              <span className="text-[hsl(var(--otiva-orange))] text-sm leading-none">⌖</span>
+              <span className="truncate">{cityLabel}</span>
+            </button>
           </div>
-        </div>
+
+          {isCityOpen && (
+            <div className="fixed inset-x-0 bottom-0 z-[160] max-h-[82vh] overflow-hidden rounded-t-3xl border border-zinc-200 bg-white shadow-2xl">
+              <div className="flex justify-center pt-3">
+                <div className="h-1 w-10 rounded-full bg-zinc-200" />
+              </div>
+              <div className="border-b border-zinc-100 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-base font-semibold text-zinc-950">Выберите город</p>
+                  <button type="button" onClick={() => setIsCityOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">×</button>
+                </div>
+                <input
+                  value={cityQuery}
+                  onChange={(e) => setCityQuery(e.target.value)}
+                  placeholder="Найти город"
+                  className="mt-3 h-11 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-sm outline-none focus:border-[hsl(var(--otiva-blue))]"
+                  autoFocus
+                />
+              </div>
+              <div className="p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">Популярные</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {popularCities.map((city) => (
+                    <button key={city} type="button" onClick={() => chooseCity(city)}
+                      className={`rounded-full px-3 py-2 text-sm font-semibold transition ${selectedCity === city ? "bg-[hsl(var(--otiva-blue))] text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-950 hover:text-white"}`}>
+                      {city}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="max-h-[48vh] overflow-y-auto px-2 pb-6">
+                {filteredCities.map((city) => (
+                  <button key={city} type="button" onClick={() => chooseCity(city)}
+                    className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm transition ${selectedCity === city ? "bg-zinc-950 font-semibold text-white" : "text-zinc-700 hover:bg-zinc-100"}`}>
+                    <span>{city}</span>
+                    {selectedCity === city && <span>✓</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          </div>
 
         {/* ── DESKTOP LAYOUT (lg+) ─────────────────────────── */}
         <div className="mx-auto hidden max-w-7xl px-4 lg:block">
