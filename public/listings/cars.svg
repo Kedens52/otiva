@@ -1,0 +1,15 @@
+<svg width="720" height="520" viewBox="0 0 720 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs><linearGradient id="bg" x1="42" y1="24" x2="680" y2="500"><stop stop-color="#F8FAFC"/><stop offset=".52" stop-color="#EAF7FF"/><stop offset="1" stop-color="#EFFFF8"/></linearGradient><linearGradient id="paint" x1="162" y1="210" x2="570" y2="365"><stop stop-color="#0B0F19"/><stop offset=".45" stop-color="#1F2937"/><stop offset="1" stop-color="#24C98A"/></linearGradient><linearGradient id="glass" x1="246" y1="158" x2="462" y2="251"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#BEEBFF"/></linearGradient><filter id="shadow" x="66" y="108" width="588" height="330" filterUnits="userSpaceOnUse"><feDropShadow dx="0" dy="34" stdDeviation="28" flood-color="#111827" flood-opacity=".2"/></filter></defs>
+<rect width="720" height="520" rx="46" fill="url(#bg)"/>
+<circle cx="612" cy="96" r="52" fill="#0EA5E9" opacity=".12"/><circle cx="120" cy="118" r="34" fill="#FF7A1A" opacity=".14"/>
+<path d="M92 396c108 29 432 29 540 0" stroke="#0F172A" stroke-opacity=".08" stroke-width="36" stroke-linecap="round"/>
+<g filter="url(#shadow)">
+<path d="M126 321c6-54 45-86 108-94l60-65c22-23 53-36 85-36h80c45 0 85 24 107 63l37 66c39 11 61 36 61 75v18c0 22-18 40-40 40H166c-24 0-43-19-43-43 0-8 1-16 3-24Z" fill="url(#paint)"/>
+<path d="M274 237 323 177c16-20 40-31 66-31h62c39 0 74 25 86 62l10 29H274Z" fill="url(#glass)"/>
+<path d="M383 151v86" stroke="#0B0F19" stroke-opacity=".25" stroke-width="9"/>
+<path d="M160 306h428" stroke="#fff" stroke-opacity=".18" stroke-width="18" stroke-linecap="round"/>
+<path d="M163 280h92" stroke="#fff" stroke-opacity=".72" stroke-width="16" stroke-linecap="round"/>
+<circle cx="222" cy="384" r="52" fill="#09090B"/><circle cx="222" cy="384" r="25" fill="#F8FAFC"/><circle cx="222" cy="384" r="11" fill="#9CA3AF"/>
+<circle cx="536" cy="384" r="52" fill="#09090B"/><circle cx="536" cy="384" r="25" fill="#F8FAFC"/><circle cx="536" cy="384" r="11" fill="#9CA3AF"/>
+</g>
+</svg>

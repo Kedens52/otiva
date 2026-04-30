@@ -1,0 +1,12 @@
+<svg width="160" height="120" viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs><linearGradient id="bg" x1="14" y1="10" x2="144" y2="108"><stop stop-color="#FFF7ED"/><stop offset=".55" stop-color="#F8FAFC"/><stop offset="1" stop-color="#EAF7FF"/></linearGradient><linearGradient id="tool" x1="52" y1="30" x2="119" y2="93"><stop stop-color="#FF7A1A"/><stop offset="1" stop-color="#0EA5E9"/></linearGradient><filter id="s"><feDropShadow dx="0" dy="14" stdDeviation="10" flood-color="#111827" flood-opacity=".18"/></filter></defs>
+<rect width="160" height="120" rx="28" fill="url(#bg)"/>
+<ellipse cx="81" cy="96" rx="48" ry="9" fill="#0F172A" opacity=".08"/>
+<g filter="url(#s)">
+<rect x="47" y="49" width="70" height="42" rx="12" fill="url(#tool)"/>
+<path d="M65 49v-9c0-6 5-11 11-11h12c6 0 11 5 11 11v9" stroke="#101014" stroke-width="7" stroke-linecap="round"/>
+<path d="M57 62h50" stroke="#fff" stroke-opacity=".55" stroke-width="5" stroke-linecap="round"/>
+<circle cx="82" cy="70" r="10" fill="#fff" opacity=".9"/>
+<path d="m79 70 4 4 8-10" stroke="#101014" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>

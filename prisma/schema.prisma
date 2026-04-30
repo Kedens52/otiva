@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  ARCHIVED
+  MODERATION
+  REJECTED
+}
+
+enum MessageStatus {
+  SENT
+  READ
+}
+
+enum ModerationAction {
+  APPROVED
+  REJECTED
+  FLAGGED
+}
+
+model User {
+  id          String   @id @default(cuid())
+  phone       String   @unique
+  name        String?
+  avatar      String?
+  description String?
+  city        String?
+  role        Role     @default(USER)
+  isVerified  Boolean  @default(false)
+  isBanned    Boolean  @default(false)
+  rating      Float    @default(0)
+  reviewCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  listings             Listing[]
+  sentMessages         Message[]          @relation("SentMessages")
+  conversationMembers  ConversationMember[]
+  moderationLogs       ModerationLog[]
+  reviews              Review[]           @relation("ReviewsReceived")
+  reviewsGiven         Review[]           @relation("ReviewsGiven")
+  favorites            Favorite[]
+  otpCodes             OtpCode[]
+
+  @@index([phone])
+  @@index([role])
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([phone])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  nameRu      String
+  icon        String?
+  description String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  listings    Listing[]
+
+  @@index([slug])
+}
+
+model Listing {
+  id          String        @id @default(cuid())
+  title       String
+  description String
+  price       Int
+  currency    String        @default("RUB")
+  status      ListingStatus @default(MODERATION)
+  images      String[]
+  location    String?
+  city        String?
+  views       Int           @default(0)
+  isPromoted  Boolean       @default(false)
+  promotedUntil DateTime?
+
+  categoryId  String
+  category    Category      @relation(fields: [categoryId], references: [id])
+
+  sellerId    String
+  seller      User          @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  // Category-specific attributes stored as JSON
+  attributes  Json?
+
+  conversations Conversation[]
+  moderationLogs ModerationLog[]
+  favorites     Favorite[]
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([categoryId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([city])
+  @@index([price])
+  @@index([createdAt])
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  listingId String?
+  listing   Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  members   ConversationMember[]
+  messages  Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listingId])
+}
+
+model ConversationMember {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt     DateTime?
+  joinedAt       DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  text           String
+  images         String[]
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  status         MessageStatus @default(SENT)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+  @@index([senderId])
+}
+
+model ModerationLog {
+  id        String           @id @default(cuid())
+  listingId String
+  listing   Listing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  moderatorId String
+  moderator User             @relation(fields: [moderatorId], references: [id])
+  action    ModerationAction
+  reason    String?
+  createdAt DateTime         @default(now())
+
+  @@index([listingId])
+  @@index([moderatorId])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  rating     Int
+  text       String?
+  sellerId   String
+  seller     User     @relation("ReviewsReceived", fields: [sellerId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation("ReviewsGiven", fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([sellerId, authorId])
+  @@index([sellerId])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, listingId])
+  @@index([userId])
+}

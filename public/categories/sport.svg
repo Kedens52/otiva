@@ -1,0 +1,12 @@
+<svg width="160" height="120" viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs><linearGradient id="bg" x1="15" y1="9" x2="144" y2="110"><stop stop-color="#EFF6FF"/><stop offset=".5" stop-color="#F0FFF8"/><stop offset="1" stop-color="#F8FAFC"/></linearGradient><filter id="s"><feDropShadow dx="0" dy="14" stdDeviation="10" flood-color="#111827" flood-opacity=".17"/></filter></defs>
+<rect width="160" height="120" rx="28" fill="url(#bg)"/>
+<ellipse cx="82" cy="96" rx="50" ry="9" fill="#0F172A" opacity=".08"/>
+<g filter="url(#s)" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="55" cy="79" r="16" fill="#fff" stroke="#0B0F19" stroke-width="7"/>
+<circle cx="113" cy="79" r="16" fill="#fff" stroke="#0B0F19" stroke-width="7"/>
+<path d="M55 79h23l18-25 17 25M78 79 68 55h25" stroke="#24C98A" stroke-width="7"/>
+<path d="M91 54h15" stroke="#FF7A1A" stroke-width="7"/>
+<circle cx="88" cy="36" r="11" fill="#0EA5E9" stroke="none"/>
+</g>
+</svg>
