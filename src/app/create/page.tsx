@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { marketplaceCategories, formatPrice } from "@/lib/mock-marketplace"
 
 type DraftListing = {
@@ -21,9 +21,42 @@ const emptyDraft: DraftListing = {
   contact: "+7 ",
 }
 
+const FREE_SLOTS = 3
+const LISTING_PACKS = [
+  { id: "pack5",  slots: 5,  price: 199,  label: "Стартовый",  desc: "+5 объявлений" },
+  { id: "pack15", slots: 15, price: 399,  label: "Стандарт",   desc: "+15 объявлений", popular: true },
+  { id: "pack30", slots: 30, price: 699,  label: "Про",         desc: "+30 объявлений" },
+]
+
 export default function CreateListingPage() {
   const [draft, setDraft] = useState(emptyDraft)
   const [saved, setSaved] = useState(false)
+  const [balance, setBalance] = useState(500)
+  const [extraSlots, setExtraSlots] = useState(0)
+  const [usedSlots, setUsedSlots] = useState(2) // demo: 2 active listings
+  const [packToast, setPackToast] = useState("")
+
+  useEffect(() => {
+    const raw = localStorage.getItem("otiva-balance")
+    if (raw) setBalance(Number(raw))
+    const extra = localStorage.getItem("otiva-extra-slots")
+    if (extra) setExtraSlots(Number(extra))
+  }, [])
+
+  function buyPack(pack: typeof LISTING_PACKS[0]) {
+    if (balance < pack.price) { setPackToast("Недостаточно средств — пополните баланс в профиле"); setTimeout(() => setPackToast(""), 3000); return }
+    const newBalance = balance - pack.price
+    const newExtra = extraSlots + pack.slots
+    setBalance(newBalance)
+    setExtraSlots(newExtra)
+    localStorage.setItem("otiva-balance", String(newBalance))
+    localStorage.setItem("otiva-extra-slots", String(newExtra))
+    setPackToast(`+${pack.slots} слотов добавлено!`)
+    setTimeout(() => setPackToast(""), 3000)
+  }
+
+  const totalSlots = FREE_SLOTS + extraSlots
+  const slotsLeft = Math.max(0, totalSlots - usedSlots)
 
   const selectedCategory = marketplaceCategories.find((category) => category.slug === draft.category)
   const pricePreview = useMemo(() => {
@@ -111,17 +144,80 @@ export default function CreateListingPage() {
           )}
         </section>
 
-        <aside className="h-fit rounded-[32px] border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-6">
-          <p className="text-sm font-medium text-zinc-500">Предпросмотр</p>
-          <div className={`mt-4 h-52 rounded-3xl bg-gradient-to-br ${selectedCategory?.tone ?? "from-zinc-950 to-zinc-300"}`} />
-          <h2 className="mt-5 text-xl font-semibold text-zinc-950">{draft.title || "Название объявления"}</h2>
-          <p className="mt-2 text-lg font-semibold text-zinc-950">{pricePreview}</p>
-          <p className="mt-1 text-sm text-zinc-500">{draft.city || "Город"}</p>
-          <p className="mt-4 line-clamp-3 text-sm leading-6 text-zinc-600">
-            {draft.description || "Описание объявления появится здесь. Покупателю важно быстро понять состояние, детали и условия сделки."}
-          </p>
-          <div className="mt-5 rounded-2xl bg-zinc-100 px-4 py-3 text-sm font-medium text-zinc-700">
-            Категория: {selectedCategory?.title}
+        <aside className="space-y-4 lg:sticky lg:top-6">
+          {/* Preview */}
+          <div className="h-fit rounded-[32px] border border-zinc-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-zinc-500">Предпросмотр</p>
+            <div className={`mt-4 h-52 rounded-3xl bg-gradient-to-br ${selectedCategory?.tone ?? "from-zinc-950 to-zinc-300"}`} />
+            <h2 className="mt-5 text-xl font-semibold text-zinc-950">{draft.title || "Название объявления"}</h2>
+            <p className="mt-2 text-lg font-semibold text-zinc-950">{pricePreview}</p>
+            <p className="mt-1 text-sm text-zinc-500">{draft.city || "Город"}</p>
+            <p className="mt-4 line-clamp-3 text-sm leading-6 text-zinc-600">
+              {draft.description || "Описание объявления появится здесь. Покупателю важно быстро понять состояние, детали и условия сделки."}
+            </p>
+            <div className="mt-5 rounded-2xl bg-zinc-100 px-4 py-3 text-sm font-medium text-zinc-700">
+              Категория: {selectedCategory?.title}
+            </div>
+          </div>
+
+          {/* Slots & Packages */}
+          <div className="rounded-[32px] border border-zinc-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-zinc-950">Слоты для объявлений</p>
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${slotsLeft === 0 ? "bg-red-100 text-red-600" : "bg-zinc-100 text-zinc-600"}`}>
+                {usedSlots} / {totalSlots} использовано
+              </span>
+            </div>
+
+            {/* Slot bar */}
+            <div className="mt-3 flex gap-1">
+              {Array.from({ length: Math.min(totalSlots, 12) }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-2 flex-1 rounded-full ${i < usedSlots ? "bg-zinc-950" : "bg-zinc-100"}`}
+                />
+              ))}
+              {totalSlots > 12 && <span className="text-xs text-zinc-400 ml-1">+{totalSlots - 12}</span>}
+            </div>
+
+            {slotsLeft === 0 && (
+              <p className="mt-3 text-xs text-red-500 font-medium">Бесплатные слоты закончились. Купите пакет, чтобы разместить ещё.</p>
+            )}
+
+            <p className="mt-4 mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-400">Пакеты объявлений</p>
+            <div className="space-y-2">
+              {LISTING_PACKS.map((pack) => (
+                <div key={pack.id} className={`relative rounded-2xl border p-3 ${pack.popular ? "border-zinc-950 bg-zinc-950 text-white" : "border-zinc-200 bg-zinc-50"}`}>
+                  {pack.popular && (
+                    <span className="absolute -top-2 right-4 rounded-full bg-[hsl(var(--otiva-orange))] px-2 py-0.5 text-[10px] font-bold text-white">
+                      Популярный
+                    </span>
+                  )}
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className={`text-sm font-semibold ${pack.popular ? "text-white" : "text-zinc-950"}`}>{pack.label}</p>
+                      <p className={`text-xs ${pack.popular ? "text-zinc-300" : "text-zinc-500"}`}>{pack.desc}</p>
+                    </div>
+                    <button
+                      onClick={() => buyPack(pack)}
+                      className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${pack.popular ? "bg-white text-zinc-950 hover:bg-zinc-100" : "bg-zinc-950 text-white hover:bg-zinc-800"}`}
+                    >
+                      {pack.price} ₽
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-3 text-xs text-zinc-400">
+              Баланс: <span className="font-semibold text-zinc-700">{balance.toLocaleString("ru-RU")} ₽</span>
+            </p>
+
+            {packToast && (
+              <p className="mt-2 rounded-xl bg-[hsl(var(--otiva-mint)/0.12)] px-3 py-2 text-xs font-semibold text-[hsl(var(--otiva-mint))]">
+                {packToast}
+              </p>
+            )}
           </div>
         </aside>
       </div>

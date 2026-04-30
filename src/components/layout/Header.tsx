@@ -395,9 +395,9 @@ export function Header() {
             <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7m-9 2v8m0 0h4m-4 0H7" /></svg>
             <span className="text-[10px] font-medium">Главная</span>
           </Link>
-          <Link href="/categories" className="flex flex-1 flex-col items-center gap-0.5 py-3 text-zinc-500 hover:text-zinc-950">
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
-            <span className="text-[10px] font-medium">Каталог</span>
+          <Link href="/favorites" className="flex flex-1 flex-col items-center gap-0.5 py-3 text-zinc-500 hover:text-zinc-950">
+            <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" /></svg>
+            <span className="text-[10px] font-medium">Избранное</span>
           </Link>
           <Link href="/my-listings" className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[hsl(var(--otiva-orange))]">
             <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[hsl(var(--otiva-orange))] text-white shadow-md shadow-[hsl(var(--otiva-orange)/0.3)]">
@@ -405,9 +405,9 @@ export function Header() {
             </span>
             <span className="text-[10px] font-semibold">Объявления</span>
           </Link>
-          <Link href="/favorites" className="flex flex-1 flex-col items-center gap-0.5 py-3 text-zinc-500 hover:text-zinc-950">
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" /></svg>
-            <span className="text-[10px] font-medium">Избранное</span>
+          <Link href="/chat" className="flex flex-1 flex-col items-center gap-0.5 py-3 text-zinc-500 hover:text-zinc-950">
+            <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm3.75 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm3.75 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M21 12c0 4.142-4.03 7.5-9 7.5a10.4 10.4 0 01-3.57-.62L3 20.25l1.5-4.5A6.88 6.88 0 013 12c0-4.142 4.03-7.5 9-7.5s9 3.358 9 7.5z" /></svg>
+            <span className="text-[10px] font-medium">Сообщения</span>
           </Link>
           {!user ? (
             <Link href="/login" className="flex flex-1 flex-col items-center gap-0.5 py-3 text-zinc-500 hover:text-zinc-950">
