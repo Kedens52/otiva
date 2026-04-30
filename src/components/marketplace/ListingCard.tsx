@@ -19,7 +19,7 @@ export function ListingCard({ listing, href, compact = false }: ListingCardProps
         compact ? "rounded-2xl" : "rounded-[28px] border border-zinc-200 shadow-sm hover:shadow-xl"
       }`}
     >
-      <div className={`relative ${compact ? "h-40 rounded-2xl sm:h-48" : "h-52"} overflow-hidden bg-gradient-to-br ${listing.imageTone}`}>
+      <div className={`relative ${compact ? "h-32 rounded-2xl sm:h-40" : "h-52"} overflow-hidden bg-gradient-to-br ${listing.imageTone}`}>
         <img src={imageSrc} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent" />
         <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-zinc-900 shadow-sm">

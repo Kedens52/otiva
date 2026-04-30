@@ -47,7 +47,7 @@ export default function MyListingsPage() {
         <div className="mt-5 grid gap-3 lg:grid-cols-2">
           <div className="rounded-[28px] bg-gradient-to-r from-[hsl(var(--otiva-blue))] to-[hsl(var(--otiva-orange)/0.75)] p-5 text-white">
             <p className="text-lg font-semibold">Как не пропускать уведомления</p>
-            <p className="mt-1 text-sm leading-6 text-white/85">Добавьте Otiva на главный экран и возвращайтесь к важным сообщениям.</p>
+            <p className="mt-1 text-sm leading-6 text-white/85">Добавьте Отива на главный экран и возвращайтесь к важным сообщениям.</p>
           </div>
           <div className="flex items-center justify-between gap-4 rounded-[28px] bg-zinc-100 p-5">
             <div className="min-w-0">

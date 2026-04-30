@@ -29,13 +29,13 @@ export default function FeedPage() {
               <Link
                 key={category.slug}
                 href={category.href}
-                className="group flex min-h-32 min-w-0 flex-col justify-between overflow-hidden rounded-3xl bg-zinc-100 p-4 transition hover:-translate-y-0.5 hover:bg-zinc-200"
+                className="group flex min-h-[7rem] min-w-0 flex-col justify-between overflow-hidden rounded-3xl bg-zinc-100 p-3 transition hover:-translate-y-0.5 hover:bg-zinc-200 sm:min-h-32 sm:p-4"
               >
-                <h2 className="w-full truncate text-base font-semibold leading-5 text-zinc-950">{category.title}</h2>
+                <h2 className="line-clamp-2 text-sm font-semibold leading-5 text-zinc-950 sm:text-base">{category.title}</h2>
                 <img
                   src={`/categories/${category.slug}.svg`}
                   alt=""
-                  className="mx-auto h-16 w-16 shrink-0 rounded-2xl object-cover shadow-sm transition group-hover:scale-105"
+                  className="mx-auto h-12 w-12 shrink-0 rounded-xl object-cover shadow-sm transition group-hover:scale-105 sm:h-16 sm:w-16 sm:rounded-2xl"
                 />
               </Link>
             ))}
@@ -69,7 +69,7 @@ export default function FeedPage() {
                 <div className="ml-auto h-16 w-12 rounded-2xl bg-white/70" />
               </div>
             </div>
-            <h2 className="mt-5 text-2xl font-semibold tracking-tight">Реклама на Otiva</h2>
+            <h2 className="mt-5 text-2xl font-semibold tracking-tight">Реклама на Отива</h2>
             <p className="mt-2 text-sm leading-6 text-white/70">
               Продвигайте объявления, запускайте баннеры и получайте больше обращений от покупателей.
             </p>

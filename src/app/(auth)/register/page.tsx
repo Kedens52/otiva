@@ -31,7 +31,7 @@ export default function RegisterPage() {
     phone: "+7 999 123-45-67",
     email: "demo@otiva.ru",
     city: "Санкт-Петербург",
-    about: "Продаю и покупаю на Otiva.",
+    about: "Продаю и покупаю на Отива.",
   })
   const [message, setMessage] = useState("")
 
@@ -69,7 +69,7 @@ export default function RegisterPage() {
   return (
     <main className="mx-auto grid min-h-[720px] max-w-7xl gap-10 px-4 py-12 lg:grid-cols-[1fr_520px] lg:items-center">
       <section>
-        <h1 className="max-w-2xl text-5xl font-semibold tracking-tight text-zinc-950 sm:text-6xl">Создайте профиль Otiva</h1>
+        <h1 className="max-w-2xl text-5xl font-semibold tracking-tight text-zinc-950 sm:text-6xl">Создайте профиль Отива</h1>
         <p className="mt-5 max-w-xl text-lg leading-8 text-zinc-500">
           Тестовая регистрация сохраняет профиль в браузере и сразу открывает страницу профиля.
         </p>

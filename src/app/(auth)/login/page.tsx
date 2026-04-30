@@ -45,9 +45,8 @@ export default function LoginPage() {
       phone: nextUser?.phone || phone,
       email: nextUser?.email || email,
       city: "Санкт-Петербург",
-      about: "Покупаю и продаю на Otiva.",
+      about: "Покупаю и продаю на Отиве.",
     }
-
     saveDemoUser(user)
     router.push("/profile/demo")
   }
@@ -63,7 +62,6 @@ export default function LoginPage() {
           setMessage("Введите номер телефона. Для демо подойдет +7 999 123-45-67.")
           return
         }
-
         setCode("123456")
         setCodeSent(true)
         setMessage("Демо-код уже подставлен: 123456. Нажмите «Войти».")
@@ -106,7 +104,7 @@ export default function LoginPage() {
       </div>
 
       <section className="hidden lg:block">
-        <h1 className="max-w-2xl text-5xl font-semibold tracking-tight text-zinc-950 sm:text-6xl">Войдите в Otiva</h1>
+        <h1 className="max-w-2xl text-5xl font-semibold tracking-tight text-zinc-950 sm:text-6xl">Войдите в Отиву</h1>
         <p className="mt-5 max-w-xl text-lg leading-8 text-zinc-500">
           Демо-вход работает без сервера: можно войти по телефону, по почте или одной кнопкой.
         </p>

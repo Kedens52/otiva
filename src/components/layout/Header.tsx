@@ -1,8 +1,10 @@
 "use client"
 
+import { totalUnread, seedConversations } from "@/lib/chat-store"
+
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Logo } from "@/components/layout/Logo"
 
 type DemoUser = {
@@ -14,7 +16,7 @@ type DemoUser = {
 const navItems = [
   { href: "/profile/demo", label: "Мои объявления" },
   { href: "/favorites", label: "Избранное" },
-  { href: "/chat", label: "Чат" },
+  { href: "/chat", label: "Чат", badge: true },
 ]
 
 const popularCities = ["Москва", "Санкт-Петербург", "Казань", "Екатеринбург", "Новосибирск", "Сочи"]
@@ -51,6 +53,9 @@ export function Header() {
   const [cityQuery, setCityQuery] = useState("")
   const [isCityOpen, setIsCityOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [unreadChats, setUnreadChats] = useState(0)
+  const [searchQuery, setSearchQuery] = useState("")
+  const router = useRouter()
   const activeCategory = categoryMenu[activeIndex]
 
   const filteredCities = useMemo(() => {
@@ -101,6 +106,15 @@ export function Header() {
   const initials = user?.name?.trim().slice(0, 1).toUpperCase() || "O"
 
   const cityLabel = selectedCity.length > 10 ? selectedCity.slice(0, 9) + "…" : selectedCity
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault()
+    const q = searchQuery.trim()
+    const params = new URLSearchParams()
+    if (q) params.set("q", q)
+    if (selectedCity && selectedCity !== "Везде") params.set("city", selectedCity)
+    router.push(`/search?${params.toString()}`)
+  }
 
   if (pathname === "/login" || pathname === "/register" || pathname === "/admin/login") return null
 
@@ -181,13 +195,20 @@ export function Header() {
 
           {/* Row 2: Search */}
           <div className="px-4 pt-2 pb-3">
-            <form className="flex h-10 items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 shadow-inner shadow-zinc-950/[0.03]">
+            <form onSubmit={handleSearch} className="flex h-10 items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 shadow-inner shadow-zinc-950/[0.03]">
               <span className="text-zinc-400">⌕</span>
               <input
                 className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-400"
                 placeholder="Поиск по объявлениям"
                 aria-label="Поиск по объявлениям"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
+              {searchQuery && (
+                <button type="submit" className="shrink-0 rounded-lg bg-zinc-950 px-2 py-0.5 text-xs font-medium text-white">
+                  Найти
+                </button>
+              )}
             </form>
           </div>
         </div>
@@ -201,10 +222,18 @@ export function Header() {
               <span className="text-base leading-none">▦</span>
               <span>Категории</span>
             </label>
-            <form className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 shadow-inner shadow-zinc-950/[0.03]">
+            <form onSubmit={handleSearch} className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 shadow-inner shadow-zinc-950/[0.03]">
               <span className="text-zinc-400">⌕</span>
-              <input className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-400"
-                placeholder="Поиск по объявлениям" aria-label="Поиск по объявлениям" />
+              <input
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-400"
+                placeholder="Поиск по объявлениям"
+                aria-label="Поиск по объявлениям"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button type="submit" className="shrink-0 rounded-lg bg-zinc-950 px-3 py-1 text-xs font-semibold text-white transition hover:bg-zinc-700">
+                Найти
+              </button>
             </form>
 
             {/* City selector desktop */}
@@ -256,7 +285,12 @@ export function Header() {
               <span className="text-lg leading-none">☰</span>
               <span className="hidden xl:inline">Мои объявления</span>
             </Link>
-            <Link href="/chat" className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950">
+            <Link href="/chat" className="relative flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950">
+                {unreadChats > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[hsl(var(--otiva-orange))] px-1 text-[10px] font-bold text-white">
+                    {unreadChats}
+                  </span>
+                )}
               <span className="text-lg leading-none">◌</span>
               <span className="hidden xl:inline">Сообщения</span>
             </Link>
@@ -412,22 +446,22 @@ export function Header() {
                 { href: "/profile/demo", label: "Мой профиль" },
                 { href: "/my-listings", label: "Мои объявления" },
                 { href: "/create", label: "Разместить объявление" },
+                { href: "/chat", label: "Сообщения" },
                 { href: "/favorites", label: "Избранное" },
-                { href: "/settings", label: "Настройки" },
               ].map((item) => (
-                <Link key={item.label} href={item.href} onClick={() => setIsProfileOpen(false)}
-                  className="block rounded-2xl px-4 py-3.5 text-sm font-medium text-zinc-800 hover:bg-zinc-100">
+                <a key={item.href} href={item.href} className="flex items-center rounded-2xl px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-50">
                   {item.label}
-                </Link>
+                </a>
               ))}
-              <div className="my-1 h-px bg-zinc-100" />
-              <button type="button" onClick={logout}
-                className="block w-full rounded-2xl px-4 py-3.5 text-left text-sm font-medium text-zinc-400 hover:bg-zinc-100 hover:text-zinc-950">
+            </div>
+            <div className="border-t border-zinc-100 p-3">
+              <button
+                onClick={() => { setIsProfileOpen(false); logout() }}
+                className="flex w-full items-center rounded-2xl px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+              >
                 Выйти
               </button>
             </div>
-            {/* Safe area for phones with home indicator */}
-            <div className="h-6" />
           </div>
         </div>
       )}
