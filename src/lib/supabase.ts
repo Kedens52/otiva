@@ -13,6 +13,31 @@ export function createClient() {
     return {
       auth: {
         getUser: async () => ({ data: { user: null }, error: null }),
+        signInWithPassword: async ({ email }: { email: string; password: string }) => {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("nashlo-demo-user", JSON.stringify({
+              name: email.split("@")[0] || "Пользователь",
+              email,
+              phone: "",
+              avatar: "",
+            }))
+            window.dispatchEvent(new Event("nashlo-auth-change"))
+          }
+          return { data: { user: { id: "demo-user", email } }, error: null }
+        },
+        signUp: async ({ email, options }: { email: string; password: string; options?: { data?: { name?: string } } }) => {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("nashlo-demo-user", JSON.stringify({
+              name: options?.data?.name || email.split("@")[0] || "Пользователь",
+              email,
+              phone: "",
+              avatar: "",
+            }))
+            window.dispatchEvent(new Event("nashlo-auth-change"))
+          }
+          return { data: { user: { id: "demo-user", email } }, error: null }
+        },
+        resetPasswordForEmail: async () => ({ data: {}, error: null }),
         signOut: async () => {},
         onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
       },

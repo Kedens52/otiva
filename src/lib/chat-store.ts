@@ -15,6 +15,8 @@ export type Conversation = {
   sellerName: string
   city: string
   updatedAt: number
+  pinned?: boolean
+  archived?: boolean
   messages: ChatMessage[]
 }
 
@@ -67,6 +69,28 @@ export function markRead(listingId: string) {
   const conv = all[listingId]
   if (!conv) return
   conv.messages.forEach((m) => { m.read = true })
+  saveChats(all)
+}
+
+export function togglePinned(listingId: string) {
+  const all = loadChats()
+  const conv = all[listingId]
+  if (!conv) return
+  conv.pinned = !conv.pinned
+  saveChats(all)
+}
+
+export function deleteConversation(listingId: string) {
+  const all = loadChats()
+  delete all[listingId]
+  saveChats(all)
+}
+
+export function archiveConversation(listingId: string) {
+  const all = loadChats()
+  const conv = all[listingId]
+  if (!conv) return
+  conv.archived = true
   saveChats(all)
 }
 
