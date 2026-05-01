@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { loadChats, seedConversations, totalUnread, type Conversation } from "@/lib/chat-store"
-import { Logo } from "@/components/layout/Logo"
 
 function timeLabel(ts: number): string {
   const now = new Date()
@@ -74,9 +73,7 @@ export default function ChatPage() {
             <div className="hidden lg:block">
               <h1 className="text-4xl font-semibold tracking-tight">Сообщения</h1>
             </div>
-            <div className="lg:hidden">
-              <Logo compact />
-            </div>
+            <div className="h-10 w-10 lg:hidden" aria-hidden="true" />
             <Link href="/create" className="flex h-10 w-10 items-center justify-center rounded-full text-2xl text-[hsl(var(--nashlo-orange))] lg:hidden" aria-label="Новое объявление">
               ✎
             </Link>

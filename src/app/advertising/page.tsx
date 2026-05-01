@@ -69,7 +69,7 @@ const rules = [
   "Перед запуском проверяем бизнес, оффер, контакты, сайт или страницу, куда ведёт реклама.",
   "Не принимаем серые схемы, вводящие в заблуждение скидки, запрещённые товары, пирамиды и агрессивные креативы.",
   "Для интернет-рекламы нужны данные рекламодателя, ИНН, маркировка «Реклама», ERID и передача данных через ОРД.",
-  "В демо-режиме деньги не списываются: покупка только открывает рекламный кабинет и показывает сценарий работы.",
+  "В демо-режиме заявка не списывает реальные деньги: после отправки открывается кабинет для проверки сценария.",
 ]
 
 const moderationSteps = [
@@ -244,7 +244,7 @@ export default function AdvertisingPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[hsl(var(--nashlo-orange))]">Рекламный кабинет</p>
               <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">{cabinet.brandName}</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">
-                {activePlan.title} · {activePlan.placement}. Кампания куплена минимум на {cabinet.months} мес., поэтому кабинет открыт.
+                {activePlan.title} · {activePlan.placement}. Заявка отправлена минимум на {cabinet.months} мес., поэтому кабинет открыт для проверки.
               </p>
             </div>
 
@@ -350,73 +350,49 @@ export default function AdvertisingPage() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 pb-28 lg:py-10">
-      <section className="overflow-hidden rounded-[32px] bg-zinc-950 p-6 text-white shadow-2xl shadow-zinc-950/15 sm:p-10">
-        <div className="max-w-3xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[hsl(var(--nashlo-orange))]">Реклама на Нашло</p>
-          <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-6xl">Реклама только от месяца</h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-white/70">
-            Показы продаются минимум на 30 дней и запускаются после проверки. Так реклама выглядит полезной частью маркетплейса, а не случайным баннером.
-          </p>
-        </div>
-      </section>
-
-      <section className="mt-8 grid gap-4 lg:grid-cols-3">
-        {plans.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setSelectedPlan(item.id)}
-            className={`relative rounded-[28px] border p-5 text-left shadow-sm transition hover:-translate-y-0.5 ${
-              selectedPlan === item.id ? "border-zinc-950 bg-white" : "border-zinc-200 bg-white hover:border-zinc-300"
-            }`}
-          >
-            {item.popular && <span className="absolute right-5 top-5 rounded-full bg-[hsl(var(--nashlo-orange))] px-3 py-1 text-xs font-semibold text-white">Оптимально</span>}
-            <p className="pr-24 text-sm font-semibold text-zinc-500">{item.placement}</p>
-            <h2 className="mt-2 text-2xl font-semibold text-zinc-950">{item.title}</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-500">{item.description}</p>
-            <p className="mt-5 text-3xl font-semibold text-zinc-950">
-              {formatPrice(item.price)} <span className="text-sm font-medium text-zinc-400">/ месяц</span>
+      <section className="rounded-[32px] bg-zinc-950 p-6 text-white shadow-2xl shadow-zinc-950/15 sm:p-8 lg:p-10">
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-end">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[hsl(var(--nashlo-orange))]">Реклама на Нашло</p>
+            <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">Заявка на размещение рекламы</h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-white/70">
+              Реклама запускается минимум на 30 дней и только после ручной проверки. Так партнёрские размещения остаются полезными для людей и безопасными для проекта.
             </p>
-            <p className="mt-1 text-sm font-semibold text-[hsl(var(--nashlo-mint))]">{item.reach}</p>
-            <ul className="mt-5 space-y-2">
-              {item.features.map((feature) => (
-                <li key={feature} className="flex gap-2 text-sm text-zinc-600">
-                  <span className="text-[hsl(var(--nashlo-orange))]">✓</span>
-                  {feature}
-                </li>
-              ))}
-            </ul>
-          </button>
-        ))}
-      </section>
-
-      <section className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="space-y-6">
-          <div className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
-            <h2 className="text-2xl font-semibold text-zinc-950">Условия размещения</h2>
-            <div className="mt-5 grid gap-3">
-              {rules.map((rule) => (
-                <div key={rule} className="rounded-2xl bg-zinc-50 px-4 py-3 text-sm leading-6 text-zinc-600">
-                  {rule}
+          </div>
+          <div className="rounded-3xl bg-white/8 p-4 text-sm leading-6 text-white/75">
+            <p className="font-semibold text-white">Как проходит заявка</p>
+            <div className="mt-3 grid gap-2">
+              {["Выберите пакет", "Заполните данные РФ", "Отправьте на модерацию", "Админ включит рекламу"].map((step, index) => (
+                <div key={step} className="flex items-center gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-zinc-950">{index + 1}</span>
+                  <span>{step}</span>
                 </div>
               ))}
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="space-y-5">
+          <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex items-start gap-4">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-zinc-950 text-sm font-semibold text-white">1</span>
               <div>
-                <h2 className="text-2xl font-semibold text-zinc-950">Данные для маркировки рекламы</h2>
-                <p className="mt-2 text-sm leading-6 text-zinc-500">
-                  Эти поля обязательны для рекламы, направленной на пользователей в РФ. Без них кампания не уйдёт на модерацию.
-                </p>
+                <h2 className="text-2xl font-semibold text-zinc-950">Контакты и рекламодатель</h2>
+                <p className="mt-1 text-sm leading-6 text-zinc-500">Кто размещает рекламу и кто отвечает за документы.</p>
               </div>
-              <span className="w-fit rounded-full bg-[hsl(var(--nashlo-orange)/0.1)] px-3 py-1 text-xs font-semibold text-[hsl(var(--nashlo-orange))]">
-                Обязательно
-              </span>
             </div>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-medium text-zinc-600">Название бизнеса *</span>
+                <input value={brandName} onChange={(event) => setBrandName(event.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-[hsl(var(--nashlo-orange))]" />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-zinc-600">Контакт *</span>
+                <input value={contact} onChange={(event) => setContact(event.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-[hsl(var(--nashlo-orange))]" />
+              </label>
               <label className="block">
                 <span className="text-sm font-medium text-zinc-600">Тип рекламодателя *</span>
                 <select value={advertiserType} onChange={(event) => setAdvertiserType(event.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-[hsl(var(--nashlo-orange))]">
@@ -450,6 +426,19 @@ export default function AdvertisingPage() {
                 <span className="text-sm font-medium text-zinc-600">Email для документов *</span>
                 <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="billing@example.ru" className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-[hsl(var(--nashlo-orange))]" />
               </label>
+            </div>
+          </section>
+
+          <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex items-start gap-4">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-zinc-950 text-sm font-semibold text-white">2</span>
+              <div>
+                <h2 className="text-2xl font-semibold text-zinc-950">Оффер и маркировка</h2>
+                <p className="mt-1 text-sm leading-6 text-zinc-500">Данные для проверки рекламы, ERID и ОРД.</p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
               <label className="block">
                 <span className="text-sm font-medium text-zinc-600">Ссылка размещения / сайт *</span>
                 <input value={targetUrl} onChange={(event) => setTargetUrl(event.target.value)} placeholder="https://example.ru" className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-[hsl(var(--nashlo-orange))]" />
@@ -471,8 +460,17 @@ export default function AdvertisingPage() {
                 <input value={ordName} onChange={(event) => setOrdName(event.target.value)} placeholder="Название оператора рекламных данных" className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-[hsl(var(--nashlo-orange))]" />
               </label>
             </div>
+          </section>
 
-            <div className="mt-5 space-y-3">
+          <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex items-start gap-4">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-zinc-950 text-sm font-semibold text-white">3</span>
+              <div>
+                <h2 className="text-2xl font-semibold text-zinc-950">Подтверждения</h2>
+                <p className="mt-1 text-sm leading-6 text-zinc-500">Без этих подтверждений заявка не уйдёт на проверку.</p>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-3">
               {requiredLegalChecks.map((item) => (
                 <label key={item} className="flex gap-3 rounded-2xl bg-zinc-50 p-3 text-sm leading-5 text-zinc-600">
                   <input
@@ -485,54 +483,80 @@ export default function AdvertisingPage() {
                 </label>
               ))}
             </div>
-          </div>
+          </section>
         </div>
 
-        <aside className="h-fit rounded-[28px] border border-zinc-200 bg-zinc-50 p-5 shadow-inner">
-          <h2 className="text-xl font-semibold text-zinc-950">Оформить рекламу</h2>
-          <label className="mt-5 block">
-            <span className="text-sm font-medium text-zinc-600">Название бизнеса</span>
-            <input value={brandName} onChange={(event) => setBrandName(event.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-[hsl(var(--nashlo-orange))]" />
-          </label>
-          <label className="mt-4 block">
-            <span className="text-sm font-medium text-zinc-600">Контакт</span>
-            <input value={contact} onChange={(event) => setContact(event.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-[hsl(var(--nashlo-orange))]" />
-          </label>
-          <div className="mt-4">
-            <span className="text-sm font-medium text-zinc-600">Срок</span>
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              {[1, 3, 6].map((value) => (
+        <aside className="space-y-4 lg:sticky lg:top-24 lg:h-fit">
+          <section className="rounded-[28px] border border-zinc-200 bg-zinc-50 p-5 shadow-sm">
+            <h2 className="text-xl font-semibold text-zinc-950">Пакет и срок</h2>
+            <div className="mt-4 space-y-2">
+              {plans.map((item) => (
                 <button
-                  key={value}
+                  key={item.id}
                   type="button"
-                  onClick={() => setMonths(value)}
-                  className={`rounded-2xl px-3 py-3 text-sm font-semibold transition ${months === value ? "bg-zinc-950 text-white" : "bg-white text-zinc-600"}`}
+                  onClick={() => setSelectedPlan(item.id)}
+                  className={`w-full rounded-2xl border p-4 text-left transition ${selectedPlan === item.id ? "border-zinc-950 bg-white shadow-sm" : "border-transparent bg-white/70 hover:bg-white"}`}
                 >
-                  {value} мес.
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-zinc-950">{item.title}</p>
+                    {item.popular && <span className="rounded-full bg-[hsl(var(--nashlo-orange))] px-2.5 py-1 text-[11px] font-semibold text-white">Оптимально</span>}
+                  </div>
+                  <p className="mt-1 text-sm text-zinc-500">{item.placement}</p>
+                  <div className="mt-3 flex items-end justify-between gap-3">
+                    <p className="text-2xl font-semibold text-zinc-950">{formatPrice(item.price)}</p>
+                    <p className="text-xs font-semibold text-[hsl(var(--nashlo-mint))]">{item.reach}</p>
+                  </div>
                 </button>
               ))}
             </div>
-            <p className="mt-2 text-xs text-zinc-400">Минимум: 1 месяц / 30 дней. Меньше выбрать нельзя.</p>
-          </div>
 
-          <div className="mt-5 rounded-2xl bg-white p-4">
-            <div className="flex items-center justify-between text-sm text-zinc-500">
-              <span>{plan.title}</span>
-              <span>{months} мес.</span>
+            <div className="mt-5">
+              <span className="text-sm font-medium text-zinc-600">Срок</span>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {[1, 3, 6].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setMonths(value)}
+                    className={`rounded-2xl px-3 py-3 text-sm font-semibold transition ${months === value ? "bg-zinc-950 text-white" : "bg-white text-zinc-600"}`}
+                  >
+                    {value} мес.
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-zinc-400">Минимум: 1 месяц / 30 дней.</p>
             </div>
-            <p className="mt-2 text-3xl font-semibold text-zinc-950">{formatPrice(total)}</p>
-            <p className="mt-1 text-xs text-zinc-400">Демо-покупка: реальная оплата не списывается.</p>
-          </div>
 
-          {formError && (
-            <div className="mt-4 rounded-2xl border border-[hsl(var(--nashlo-orange)/0.25)] bg-[hsl(var(--nashlo-orange)/0.08)] px-4 py-3 text-sm leading-5 text-[hsl(var(--nashlo-orange))]">
-              {formError}
+            <div className="mt-5 rounded-2xl bg-white p-4">
+              <div className="flex items-center justify-between text-sm text-zinc-500">
+                <span>{plan.title}</span>
+                <span>{months} мес.</span>
+              </div>
+              <p className="mt-2 text-3xl font-semibold text-zinc-950">{formatPrice(total)}</p>
+              <p className="mt-1 text-xs text-zinc-400">Это заявка на модерацию: оплата не списывается автоматически.</p>
             </div>
-          )}
 
-          <button onClick={buy} className="mt-4 w-full rounded-2xl bg-[hsl(var(--nashlo-orange))] px-5 py-3 text-sm font-semibold text-white">
-            Купить и открыть кабинет
-          </button>
+            {formError && (
+              <div className="mt-4 rounded-2xl border border-[hsl(var(--nashlo-orange)/0.25)] bg-[hsl(var(--nashlo-orange)/0.08)] px-4 py-3 text-sm leading-5 text-[hsl(var(--nashlo-orange))]">
+                {formError}
+              </div>
+            )}
+
+            <button onClick={buy} className="mt-4 w-full rounded-2xl bg-[hsl(var(--nashlo-orange))] px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-[hsl(var(--nashlo-orange)/0.25)]">
+              Отправить заявку
+            </button>
+          </section>
+
+          <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm">
+            <h2 className="font-semibold text-zinc-950">Условия</h2>
+            <div className="mt-3 space-y-2">
+              {rules.map((rule) => (
+                <div key={rule} className="rounded-2xl bg-zinc-50 px-3 py-2 text-sm leading-5 text-zinc-600">
+                  {rule}
+                </div>
+              ))}
+            </div>
+          </section>
         </aside>
       </section>
     </main>
