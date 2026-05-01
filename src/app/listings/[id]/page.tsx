@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -37,22 +37,22 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
       <Link href="/feed" className="text-sm font-semibold text-zinc-500 hover:text-zinc-950">← Вернуться в ленту</Link>
 
       {/* Mobile sticky price bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur-sm lg:hidden">
+      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] left-0 right-0 z-40 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur-sm lg:hidden">
         <div className="mx-auto flex max-w-lg items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs text-zinc-400">{listing.title}</p>
             <p className="text-xl font-bold text-zinc-950">{formatPrice(listing.price)}</p>
           </div>
-          <button onClick={openWrite} className="shrink-0 rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800">
+          <button onClick={openWrite} className="shrink-0 rounded-full bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800">
             Написать
           </button>
-          <button onClick={openCall} className="shrink-0 rounded-full border-2 border-zinc-200 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-50">
+          <button onClick={openCall} className="shrink-0 rounded-full border-2 border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-50">
             Позвонить
           </button>
         </div>
       </div>
 
-      <section className="mb-20 mt-6 grid gap-8 lg:mb-0 lg:grid-cols-[1fr_360px]">
+      <section className="mb-32 mt-6 grid gap-8 lg:mb-0 lg:grid-cols-[1fr_360px]">
         <div className="order-last lg:order-first">
           <div className={`overflow-hidden rounded-[36px] bg-gradient-to-br ${listing.imageTone} shadow-2xl shadow-zinc-950/15`}>
             <img src={`/listings/${listing.category}.svg`} alt={listing.title} className="h-52 w-full object-cover sm:h-80 lg:h-[420px]" />
@@ -63,7 +63,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
           {Object.keys(listing.specs).length > 0 && (
             <div className="mt-8 rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm">
               <h2 className="text-2xl font-semibold text-zinc-950">Характеристики</h2>
-              <dl className="mt-5 grid gap-3 grid-cols-2">
+              <dl className="mt-5 grid gap-3 sm:grid-cols-2">
                 {Object.entries(listing.specs).map(([name, value]) => (
                   <div key={name} className="rounded-2xl bg-zinc-50 px-4 py-3">
                     <dt className="text-sm text-zinc-500">{name}</dt>
@@ -90,7 +90,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
               </div>
             </div>
             {listing.seller.verified && (
-              <p className="mt-4 rounded-2xl bg-[hsl(var(--otiva-mint)/0.12)] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--otiva-mint))]">
+              <p className="mt-4 rounded-2xl bg-[hsl(var(--nashlo-mint)/0.12)] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--nashlo-mint))]">
                 ✓ Проверенный продавец
               </p>
             )}

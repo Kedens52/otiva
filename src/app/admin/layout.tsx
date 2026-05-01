@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 const NAV = [
   { href: "/admin/moderation", label: "Модерация",  icon: "🛡" },
   { href: "/admin/listings",   label: "Объявления", icon: "📋" },
+  { href: "/admin/ads",        label: "Реклама",    icon: "↗" },
   { href: "/admin/users",      label: "Пользователи", icon: "👤" },
   { href: "/admin/analytics",  label: "Аналитика",  icon: "📊" },
   { href: "/admin/settings",   label: "Настройки",  icon: "⚙" },
@@ -29,11 +30,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-white/10 bg-zinc-950">
         <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[hsl(var(--otiva-orange))] text-xs font-bold text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[hsl(var(--nashlo-orange))] text-xs font-bold text-white">
             О
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">Отива</p>
+            <p className="text-sm font-semibold text-white">Нашло</p>
             <p className="text-[11px] text-zinc-500">Dev console</p>
           </div>
         </div>

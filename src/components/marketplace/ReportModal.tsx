@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 
@@ -35,17 +35,17 @@ export function ReportModal({ listingId, listingTitle, onClose }: Props) {
       status: "pending",
     }
     try {
-      const existing = JSON.parse(localStorage.getItem("otiva-reports") || "[]")
-      localStorage.setItem("otiva-reports", JSON.stringify([report, ...existing]))
+      const existing = JSON.parse(localStorage.getItem("nashlo-reports") || "[]")
+      localStorage.setItem("nashlo-reports", JSON.stringify([report, ...existing]))
     } catch {}
     setSent(true)
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-end justify-center px-4 pb-[env(safe-area-inset-bottom)] sm:items-center sm:p-0" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-md overflow-hidden rounded-t-[32px] bg-white p-6 shadow-2xl sm:rounded-[32px]"
+        className="relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-t-[32px] bg-white p-5 shadow-2xl sm:rounded-[32px] sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Handle */}
@@ -53,7 +53,7 @@ export function ReportModal({ listingId, listingTitle, onClose }: Props) {
 
         {sent ? (
           <div className="flex flex-col items-center py-8 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[hsl(var(--otiva-mint)/0.12)] text-3xl">✓</div>
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[hsl(var(--nashlo-mint)/0.12)] text-3xl">✓</div>
             <h2 className="text-xl font-semibold text-zinc-950">Жалоба отправлена</h2>
             <p className="mt-2 text-sm text-zinc-500">Модераторы рассмотрят её в течение 24 часов.</p>
             <button

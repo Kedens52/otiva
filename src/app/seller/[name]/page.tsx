@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import Link from "next/link"
@@ -16,7 +16,7 @@ const DEMO_SELLER = {
   slug: "aleksey-morozov",
   avatar: "А",
   avatarTone: "from-zinc-950 to-zinc-700",
-  since: "на Отива с 2022",
+  since: "на Нашло с 2022",
   verified: true,
   city: "Москва",
   about: "Продаю автомобили с прозрачной историей. Только проверенные машины, все документы на руках. Работаю честно уже 3 года.",
@@ -59,12 +59,12 @@ export default function SellerStorefrontPage({ params }: { params: { name: strin
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-semibold text-zinc-950 sm:text-3xl">{seller.name}</h1>
                 {seller.verified && (
-                  <span className="rounded-full bg-[hsl(var(--otiva-mint)/0.12)] px-3 py-1 text-xs font-semibold text-[hsl(var(--otiva-mint))]">
+                  <span className="rounded-full bg-[hsl(var(--nashlo-mint)/0.12)] px-3 py-1 text-xs font-semibold text-[hsl(var(--nashlo-mint))]">
                     ✓ Проверен
                   </span>
                 )}
                 {seller.badge && (
-                  <span className="rounded-full bg-[hsl(var(--otiva-orange)/0.1)] px-3 py-1 text-xs font-semibold text-[hsl(var(--otiva-orange))]">
+                  <span className="rounded-full bg-[hsl(var(--nashlo-orange)/0.1)] px-3 py-1 text-xs font-semibold text-[hsl(var(--nashlo-orange))]">
                     ★ {seller.badge}
                   </span>
                 )}

@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify } from 'jose'
+﻿import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import { prisma } from './prisma'
 
@@ -6,7 +6,7 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback-secret-change-in-production'
 )
 
-const COOKIE_NAME = 'otiva_token'
+const COOKIE_NAME = 'nashlo_token'
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
@@ -92,7 +92,7 @@ export async function sendSmsCode(phone: string, code: string): Promise<void> {
 
   // Production: integrate with SMS provider (e.g., SMSC.ru)
   const response = await fetch(
-    `https://smsc.ru/sys/send.php?login=YOUR_LOGIN&psw=${process.env.SMS_API_KEY}&phones=${encodeURIComponent(phone)}&mes=Your+Otiva+code:+${code}&sender=${process.env.SMS_SENDER || 'Otiva'}&fmt=3`
+    `https://smsc.ru/sys/send.php?login=YOUR_LOGIN&psw=${process.env.SMS_API_KEY}&phones=${encodeURIComponent(phone)}&mes=Your+Нашло+code:+${code}&sender=${process.env.SMS_SENDER || 'Нашло'}&fmt=3`
   )
 
   if (!response.ok) {

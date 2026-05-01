@@ -1,4 +1,4 @@
-export type ListingCategory =
+﻿export type ListingCategory =
   | "cars"
   | "real-estate"
   | "services"
@@ -43,7 +43,7 @@ export const marketplaceCategories: Array<{
     title: "Авто",
     caption: "Машины с понятной историей и быстрым подбором",
     count: "128 объявлений",
-    tone: "from-[hsl(var(--otiva-mint))] to-zinc-400",
+    tone: "from-[hsl(var(--nashlo-mint))] to-zinc-400",
   },
   {
     slug: "real-estate",
@@ -51,7 +51,7 @@ export const marketplaceCategories: Array<{
     title: "Недвижимость",
     caption: "Квартиры, дома и апартаменты для жизни",
     count: "84 объекта",
-    tone: "from-[hsl(var(--otiva-blue))] to-zinc-300",
+    tone: "from-[hsl(var(--nashlo-blue))] to-zinc-300",
   },
   {
     slug: "services",
@@ -59,7 +59,7 @@ export const marketplaceCategories: Array<{
     title: "Услуги",
     caption: "Ремонт, доставка, мастера и специалисты",
     count: "213 специалистов",
-    tone: "from-[hsl(var(--otiva-orange))] to-zinc-300",
+    tone: "from-[hsl(var(--nashlo-orange))] to-zinc-300",
   },
   {
     slug: "electronics",
@@ -67,7 +67,7 @@ export const marketplaceCategories: Array<{
     title: "Электроника",
     caption: "Смартфоны, ноутбуки, консоли и техника",
     count: "96 товаров",
-    tone: "from-[hsl(var(--otiva-blue))] to-zinc-500",
+    tone: "from-[hsl(var(--nashlo-blue))] to-zinc-500",
   },
   {
     slug: "home",
@@ -75,7 +75,7 @@ export const marketplaceCategories: Array<{
     title: "Дом и интерьер",
     caption: "Мебель, свет, декор и бытовые вещи",
     count: "141 товар",
-    tone: "from-[hsl(var(--otiva-orange))] to-stone-300",
+    tone: "from-[hsl(var(--nashlo-orange))] to-stone-300",
   },
   {
     slug: "fashion",
@@ -83,7 +83,7 @@ export const marketplaceCategories: Array<{
     title: "Одежда",
     caption: "Бренды, аксессуары и капсульный гардероб",
     count: "178 товаров",
-    tone: "from-zinc-950 to-[hsl(var(--otiva-orange)/0.45)]",
+    tone: "from-zinc-950 to-[hsl(var(--nashlo-orange)/0.45)]",
   },
   {
     slug: "kids",
@@ -91,7 +91,7 @@ export const marketplaceCategories: Array<{
     title: "Детям",
     caption: "Коляски, игрушки, одежда и обучение",
     count: "74 объявления",
-    tone: "from-[hsl(var(--otiva-mint))] to-zinc-200",
+    tone: "from-[hsl(var(--nashlo-mint))] to-zinc-200",
   },
   {
     slug: "sport",
@@ -99,7 +99,7 @@ export const marketplaceCategories: Array<{
     title: "Спорт",
     caption: "Велосипеды, тренажеры и активный отдых",
     count: "58 товаров",
-    tone: "from-zinc-900 to-[hsl(var(--otiva-mint)/0.55)]",
+    tone: "from-zinc-900 to-[hsl(var(--nashlo-mint)/0.55)]",
   },
 ]
 
@@ -117,7 +117,7 @@ export const listings: MarketplaceListing[] = [
     tags: ["Седан", "Бензин", "Полный привод"],
     description:
       "Автомобиль в отличном состоянии, обслуживался у официального дилера. Богатая комплектация, прозрачная история, готов к проверке.",
-    seller: { name: "Алексей Морозов", rating: 4.9, since: "на Отива с 2022", verified: true },
+    seller: { name: "Алексей Морозов", rating: 4.9, since: "на Нашло с 2022", verified: true },
     specs: {
       Год: "2021",
       Пробег: "48 000 км",
@@ -140,7 +140,7 @@ export const listings: MarketplaceListing[] = [
     tags: ["Седан", "Автомат", "Комфорт"],
     description:
       "Комфортный бизнес-седан с аккуратным салоном, камерой, ассистентами и зимним пакетом. Без срочных вложений.",
-    seller: { name: "Марина Волкова", rating: 4.8, since: "на Отива с 2021", verified: true },
+    seller: { name: "Марина Волкова", rating: 4.8, since: "на Нашло с 2021", verified: true },
     specs: {
       Год: "2020",
       Пробег: "62 000 км",
@@ -162,7 +162,7 @@ export const listings: MarketplaceListing[] = [
     tags: ["Электро", "AWD", "Autopilot"],
     description:
       "Свежая Tesla с большим запасом хода, ухоженным интерьером и домашней зарядкой в комплекте.",
-    seller: { name: "Илья Соколов", rating: 4.7, since: "на Отива с 2023", verified: true },
+    seller: { name: "Илья Соколов", rating: 4.7, since: "на Нашло с 2023", verified: true },
     specs: {
       Год: "2022",
       Пробег: "31 000 км",
@@ -185,7 +185,7 @@ export const listings: MarketplaceListing[] = [
     tags: ["68 м²", "2 комнаты", "Парк рядом"],
     description:
       "Тихий дом, дизайнерский ремонт, подземный паркинг и зеленый двор без машин.",
-    seller: { name: "Отива Realty", rating: 5, since: "партнер Отива", verified: true },
+    seller: { name: "Нашло Realty", rating: 5, since: "партнер Нашло", verified: true },
     specs: {
       Площадь: "68 м²",
       Комнаты: "2",
@@ -206,7 +206,7 @@ export const listings: MarketplaceListing[] = [
     tags: ["Гарантия", "Смета", "Бригада"],
     description:
       "Команда мастеров ведет ремонт от черновых работ до финальной уборки. Фиксируем этапы и бюджет.",
-    seller: { name: "Студия Forma", rating: 4.9, since: "на Отива с 2020", verified: true },
+    seller: { name: "Студия Forma", rating: 4.9, since: "на Нашло с 2020", verified: true },
     specs: {
       Опыт: "9 лет",
       Команда: "12 мастеров",
@@ -224,7 +224,7 @@ export const listings: MarketplaceListing[] = [
     imageTone: "from-zinc-950 via-zinc-700 to-zinc-200",
     tags: ["Гарантия", "256 ГБ", "Без сколов"],
     description: "Аккуратный смартфон, коробка и чек на месте. Батарея 96%, состояние близко к новому.",
-    seller: { name: "Даниил Ким", rating: 4.9, since: "на Отива с 2021", verified: true },
+    seller: { name: "Даниил Ким", rating: 4.9, since: "на Нашло с 2021", verified: true },
     specs: { Память: "256 ГБ", Цвет: "Titanium", Состояние: "Отличное", Батарея: "96%" },
   },
   {
@@ -237,7 +237,7 @@ export const listings: MarketplaceListing[] = [
     imageTone: "from-stone-100 via-zinc-200 to-stone-500",
     tags: ["Модульный", "Ткань", "Доставка"],
     description: "Современный диван для гостиной, без пятен и повреждений. Можно забрать по секциям.",
-    seller: { name: "Анна Павлова", rating: 4.8, since: "на Отива с 2022", verified: true },
+    seller: { name: "Анна Павлова", rating: 4.8, since: "на Нашло с 2022", verified: true },
     specs: { Размер: "310 × 180 см", Материал: "Ткань", Цвет: "Светло-серый", Доставка: "По договоренности" },
   },
   {
@@ -250,7 +250,7 @@ export const listings: MarketplaceListing[] = [
     imageTone: "from-zinc-900 via-zinc-400 to-stone-100",
     tags: ["Шерсть", "Размер M", "Сезон"],
     description: "Теплое пальто в спокойном цвете, подходит для базового гардероба.",
-    seller: { name: "Екатерина Лебедева", rating: 4.7, since: "на Отива с 2023", verified: false },
+    seller: { name: "Екатерина Лебедева", rating: 4.7, since: "на Нашло с 2023", verified: false },
     specs: { Размер: "M", Материал: "Шерсть", Состояние: "Очень хорошее", Сезон: "Осень-зима" },
   },
   {
@@ -263,7 +263,7 @@ export const listings: MarketplaceListing[] = [
     imageTone: "from-zinc-100 via-zinc-200 to-zinc-500",
     tags: ["2 в 1", "Люлька", "Прогулка"],
     description: "Коляска в хорошем состоянии, все механизмы работают, хранение в квартире.",
-    seller: { name: "Ольга Смирнова", rating: 5, since: "на Отива с 2020", verified: true },
+    seller: { name: "Ольга Смирнова", rating: 5, since: "на Нашло с 2020", verified: true },
     specs: { Комплект: "2 в 1", Состояние: "Хорошее", Цвет: "Серый", Возраст: "0-3 года" },
   },
   {
@@ -276,7 +276,7 @@ export const listings: MarketplaceListing[] = [
     imageTone: "from-zinc-200 via-zinc-300 to-zinc-900",
     tags: ["Размер M", "Гидравлика", "Легкая рама"],
     description: "Быстрый городской велосипед, обслужен перед продажей. Подойдет для города и парков.",
-    seller: { name: "Никита Орлов", rating: 4.8, since: "на Отива с 2021", verified: true },
+    seller: { name: "Никита Орлов", rating: 4.8, since: "на Нашло с 2021", verified: true },
     specs: { Рама: "M", Тормоза: "Гидравлика", Вес: "11.5 кг", Колеса: "700C" },
   },
 ]

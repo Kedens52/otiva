@@ -1,13 +1,13 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
     --font-marketplace: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --otiva-blue: 207 95% 50%;
-    --otiva-orange: 22 94% 52%;
-    --otiva-mint: 158 72% 42%;
+    --nashlo-blue: 207 95% 50%;
+    --nashlo-orange: 22 94% 52%;
+    --nashlo-mint: 158 72% 42%;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;

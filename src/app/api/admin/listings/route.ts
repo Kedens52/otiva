@@ -1,89 +1,41 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/auth'
-import { z } from 'zod'
-import type { ListingStatus } from '@prisma/client'
+import { NextRequest, NextResponse } from "next/server"
+import { cookies } from "next/headers"
 
-export async function GET(request: NextRequest) {
-  try {
-    const user = await getCurrentUser()
-    if (!user || !['ADMIN', 'MODERATOR'].includes(user.role)) {
-      return NextResponse.json({ error: 'Нет доступа' }, { status: 403 })
-    }
+const ADMIN_COOKIE = "nashlo_admin_session"
 
-    const { searchParams } = request.nextUrl
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
-    const pageSize = Math.min(50, parseInt(searchParams.get('pageSize') || '20'))
-    const status = searchParams.get('status') as ListingStatus | null
-    const query = searchParams.get('q')
-
-    const where: Record<string, unknown> = {}
-    if (status) where.status = status
-    if (query) {
-      where.OR = [
-        { title: { contains: query, mode: 'insensitive' } },
-        { seller: { phone: { contains: query } } },
-      ]
-    }
-
-    const [items, total] = await Promise.all([
-      prisma.listing.findMany({
-        where,
-        include: {
-          seller: { select: { id: true, name: true, phone: true, avatar: true } },
-          category: true,
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      prisma.listing.count({ where }),
-    ])
-
-    return NextResponse.json({ items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) })
-  } catch {
-    return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
-  }
+function adminToken() {
+  if (process.env.NASHLO_ADMIN_TOKEN) return process.env.NASHLO_ADMIN_TOKEN
+  if (process.env.NODE_ENV === "production") return null
+  return "nashlo-local-developer"
 }
 
-const moderateSchema = z.object({
-  listingId: z.string(),
-  action: z.enum(['APPROVED', 'REJECTED']),
-  reason: z.string().optional(),
-})
+function isAuthed(request: NextRequest) {
+  const cookieStore = cookies()
+  const token = cookieStore.get(ADMIN_COOKIE)?.value
+  const expected = adminToken()
+  return expected && token === expected
+}
+
+// In-memory moderation state (resets on server restart — fine for demo)
+const moderationState = new Map<string, "PENDING" | "APPROVED" | "REJECTED">()
+
+export async function GET(request: NextRequest) {
+  if (!isAuthed(request)) return NextResponse.json({ error: "Нет доступа" }, { status: 403 })
+  // Return empty — admin pages use mock data directly on client
+  return NextResponse.json({ ok: true, items: [], total: 0 })
+}
 
 export async function POST(request: NextRequest) {
+  if (!isAuthed(request)) return NextResponse.json({ error: "Нет доступа" }, { status: 403 })
   try {
-    const user = await getCurrentUser()
-    if (!user || !['ADMIN', 'MODERATOR'].includes(user.role)) {
-      return NextResponse.json({ error: 'Нет доступа' }, { status: 403 })
-    }
-
     const body = await request.json()
-    const { listingId, action, reason } = moderateSchema.parse(body)
-
-    const newStatus: ListingStatus = action === 'APPROVED' ? 'ACTIVE' : 'REJECTED'
-
-    const [listing] = await prisma.$transaction([
-      prisma.listing.update({
-        where: { id: listingId },
-        data: { status: newStatus },
-      }),
-      prisma.moderationLog.create({
-        data: {
-          listingId,
-          moderatorId: user.id,
-          action,
-          reason,
-        },
-      }),
-    ])
-
-    return NextResponse.json({ listing })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors[0].message }, { status: 400 })
+    const { listingId, action } = body
+    if (!listingId || !["APPROVED", "REJECTED"].includes(action)) {
+      return NextResponse.json({ error: "Неверные данные" }, { status: 400 })
     }
-    return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
+    moderationState.set(listingId, action)
+    return NextResponse.json({ ok: true, listingId, action })
+  } catch {
+    return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 })
   }
 }

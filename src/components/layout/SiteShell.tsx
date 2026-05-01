@@ -8,6 +8,7 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs"
 export function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isAdmin = pathname.startsWith("/admin")
+  const isChatApp = pathname === "/chat" || pathname.startsWith("/messages/")
 
   if (isAdmin) {
     return <>{children}</>
@@ -15,9 +16,11 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-zinc-950">
-      <Header />
-      <main className="flex-1 pb-16 lg:pb-0">
-        <Breadcrumbs />
+      <div className={isChatApp ? "hidden lg:block" : ""}>
+        <Header />
+      </div>
+      <main className={`flex-1 overflow-x-hidden ${isChatApp ? "pb-0" : "pb-24 lg:pb-0"}`}>
+        {!isChatApp && <Breadcrumbs />}
         {children}
       </main>
       <div className="hidden lg:block">

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 
-const ADMIN_COOKIE = "otiva_admin_session"
+const ADMIN_COOKIE = "nashlo_admin_session"
 
 function adminToken() {
-  return process.env.OTIVA_ADMIN_TOKEN || "otiva-local-developer"
+  if (process.env.NASHLO_ADMIN_TOKEN) return process.env.NASHLO_ADMIN_TOKEN
+  if (process.env.NODE_ENV === "production") return null
+  return "nashlo-local-developer"
 }
 
 export function middleware(request: NextRequest) {
@@ -17,7 +19,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const hasAccess = request.cookies.get(ADMIN_COOKIE)?.value === adminToken()
+  const token = adminToken()
+  const hasAccess = Boolean(token) && request.cookies.get(ADMIN_COOKIE)?.value === token
 
   if (hasAccess) {
     return NextResponse.next()

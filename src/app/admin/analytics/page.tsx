@@ -1,8 +1,8 @@
-export default function AdminAnalyticsPage() {
+﻿export default function AdminAnalyticsPage() {
   const stats = [
-    { value: "12 847", label: "Пользователей",        sub: "+214 за неделю",   color: "bg-[hsl(var(--otiva-blue)/0.10)]"    },
-    { value: "1 204",  label: "Активных объявлений",  sub: "86 на модерации",  color: "bg-[hsl(var(--otiva-orange)/0.10)]"  },
-    { value: "86%",    label: "Авто-проверок",         sub: "14% — вручную",   color: "bg-[hsl(var(--otiva-mint)/0.12)]"    },
+    { value: "12 847", label: "Пользователей",        sub: "+214 за неделю",   color: "bg-[hsl(var(--nashlo-blue)/0.10)]"    },
+    { value: "1 204",  label: "Активных объявлений",  sub: "86 на модерации",  color: "bg-[hsl(var(--nashlo-orange)/0.10)]"  },
+    { value: "86%",    label: "Авто-проверок",         sub: "14% — вручную",   color: "bg-[hsl(var(--nashlo-mint)/0.12)]"    },
     { value: "3 481",  label: "Сообщений в сутки",    sub: "конверсия 2.8%",   color: "bg-zinc-100"                          },
     { value: "7 мин",  label: "Среднее решение",       sub: "↓ 2 мин vs неделя", color: "bg-zinc-100"                       },
     { value: "4.87",   label: "Средний рейтинг",       sub: "по всем продавцам", color: "bg-zinc-100"                       },
@@ -26,7 +26,7 @@ export default function AdminAnalyticsPage() {
   ]
 
   const ACTION_COLOR: Record<string, string> = {
-    "Одобрено":  "bg-[hsl(var(--otiva-mint)/0.15)] text-[hsl(var(--otiva-mint))]",
+    "Одобрено":  "bg-[hsl(var(--nashlo-mint)/0.15)] text-[hsl(var(--nashlo-mint))]",
     "Отклонено": "bg-red-50 text-red-600",
     "Бан":       "bg-zinc-950 text-white",
   }
@@ -60,7 +60,7 @@ export default function AdminAnalyticsPage() {
                 </div>
                 <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-100">
                   <div
-                    className="h-2 rounded-full bg-[hsl(var(--otiva-orange))] transition-all"
+                    className="h-2 rounded-full bg-[hsl(var(--nashlo-orange))] transition-all"
                     style={{ width: cat.share + "%" }}
                   />
                 </div>

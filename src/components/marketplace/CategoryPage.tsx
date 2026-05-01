@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useMemo, useState } from "react"
 import { EmptyState } from "@/components/marketplace/EmptyState"
@@ -44,16 +44,16 @@ export function CategoryPage({ category }: CategoryPageProps) {
   if (!categoryInfo) return null
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10">
-      <section className={`overflow-hidden rounded-[36px] bg-gradient-to-br ${categoryInfo.tone} p-8 text-white shadow-2xl shadow-zinc-950/15 sm:p-10`}>
+    <main className="mx-auto max-w-7xl px-4 py-6 lg:py-10">
+      <section className={`overflow-hidden rounded-[28px] bg-gradient-to-br ${categoryInfo.tone} p-5 text-white shadow-2xl shadow-zinc-950/15 sm:rounded-[36px] sm:p-10`}>
         <div className="max-w-3xl">
-          <h1 className="text-5xl font-semibold tracking-tight sm:text-6xl">{categoryInfo.title}</h1>
-          <p className="mt-5 text-lg leading-8 text-white/85">{categoryInfo.caption}</p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-6xl">{categoryInfo.title}</h1>
+          <p className="mt-3 text-sm leading-6 text-white/85 sm:mt-5 sm:text-lg sm:leading-8">{categoryInfo.caption}</p>
         </div>
       </section>
 
       {items.length > 0 ? (
-        <section className="grid gap-6 py-10 lg:grid-cols-[280px_1fr]">
+        <section className="grid gap-6 py-6 lg:grid-cols-[280px_1fr] lg:py-10">
           <aside className="h-fit rounded-[28px] border border-zinc-200 bg-zinc-50 p-5 shadow-inner lg:sticky lg:top-24">
             <h2 className="text-lg font-semibold text-zinc-950">Фильтры</h2>
             <div className="mt-5 space-y-5">
@@ -62,7 +62,7 @@ export function CategoryPage({ category }: CategoryPageProps) {
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none focus:border-[hsl(var(--otiva-orange))]"
+                  className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none focus:border-[hsl(var(--nashlo-orange))]"
                   placeholder="Название или описание"
                 />
               </label>
@@ -79,7 +79,7 @@ export function CategoryPage({ category }: CategoryPageProps) {
                 <input
                   value={priceMax}
                   onChange={(event) => setPriceMax(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none focus:border-[hsl(var(--otiva-orange))]"
+                  className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none focus:border-[hsl(var(--nashlo-orange))]"
                   placeholder="100 000 ₽"
                 />
               </label>
@@ -114,13 +114,13 @@ export function CategoryPage({ category }: CategoryPageProps) {
           <section>
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-3xl font-semibold tracking-tight text-zinc-950">Объявления</h2>
+                <h2 className="text-2xl font-semibold tracking-tight text-zinc-950 sm:text-3xl">Объявления</h2>
                 <p className="mt-2 text-zinc-500">{filteredItems.length} из {categoryInfo.count} в демо-каталоге.</p>
               </div>
             </div>
 
             {filteredItems.length > 0 ? (
-              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
                 {filteredItems.map((item) => (
                   <ListingCard key={item.id} listing={item} href={item.category === "cars" ? `/cars/${item.id}` : `/listings/${item.id}`} />
                 ))}

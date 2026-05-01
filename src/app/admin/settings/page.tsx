@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 
@@ -41,7 +41,7 @@ const STOP_WORDS_DEFAULT = `кредит без отказа
 
 const LEVEL_COLOR: Record<string, string> = {
   "Высокий": "bg-red-50 text-red-600",
-  "Средний": "bg-[hsl(var(--otiva-orange)/0.12)] text-[hsl(var(--otiva-orange))]",
+  "Средний": "bg-[hsl(var(--nashlo-orange)/0.12)] text-[hsl(var(--nashlo-orange))]",
   "Низкий":  "bg-zinc-100 text-zinc-500",
 }
 
@@ -116,14 +116,14 @@ export default function AdminSettingsPage() {
           {/* Header */}
           <div className={`flex items-center justify-between gap-4 px-6 py-5 ${aiEnabled ? "border-b border-zinc-100" : ""}`}>
             <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-2xl text-xl ${aiEnabled ? "bg-[hsl(var(--otiva-orange)/0.12)]" : "bg-zinc-100"}`}>
+              <div className={`flex h-10 w-10 items-center justify-center rounded-2xl text-xl ${aiEnabled ? "bg-[hsl(var(--nashlo-orange)/0.12)]" : "bg-zinc-100"}`}>
                 🤖
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-semibold text-zinc-950">ИИ-модерация</h2>
                   {aiEnabled && (
-                    <span className="rounded-full bg-[hsl(var(--otiva-mint)/0.15)] px-2.5 py-0.5 text-xs font-semibold text-[hsl(var(--otiva-mint))]">
+                    <span className="rounded-full bg-[hsl(var(--nashlo-mint)/0.15)] px-2.5 py-0.5 text-xs font-semibold text-[hsl(var(--nashlo-mint))]">
                       Активна
                     </span>
                   )}
@@ -135,7 +135,7 @@ export default function AdminSettingsPage() {
             </div>
             <label className="relative inline-flex cursor-pointer items-center shrink-0">
               <input type="checkbox" checked={aiEnabled} onChange={() => { setAiEnabled((v) => !v); setSaved(false) }} className="sr-only peer" />
-              <div className="h-7 w-14 rounded-full bg-zinc-200 transition peer-checked:bg-[hsl(var(--otiva-orange))] after:absolute after:left-[3px] after:top-[3px] after:h-[22px] after:w-[22px] after:rounded-full after:bg-white after:shadow after:transition-all peer-checked:after:translate-x-7" />
+              <div className="h-7 w-14 rounded-full bg-zinc-200 transition peer-checked:bg-[hsl(var(--nashlo-orange))] after:absolute after:left-[3px] after:top-[3px] after:h-[22px] after:w-[22px] after:rounded-full after:bg-white after:shadow after:transition-all peer-checked:after:translate-x-7" />
             </label>
           </div>
 
@@ -150,7 +150,7 @@ export default function AdminSettingsPage() {
                       <button
                         key={p.id}
                         onClick={() => { setAiProvider(p.id); setSaved(false) }}
-                        className={`rounded-2xl border-2 p-3 text-left transition ${aiProvider === p.id ? "border-[hsl(var(--otiva-orange))] bg-[hsl(var(--otiva-orange)/0.05)]" : "border-zinc-200 hover:border-zinc-300"}`}
+                        className={`rounded-2xl border-2 p-3 text-left transition ${aiProvider === p.id ? "border-[hsl(var(--nashlo-orange))] bg-[hsl(var(--nashlo-orange)/0.05)]" : "border-zinc-200 hover:border-zinc-300"}`}
                       >
                         <p className="text-sm font-semibold text-zinc-950">{p.label}</p>
                         <p className="mt-0.5 text-xs text-zinc-500">{p.hint}</p>
@@ -167,7 +167,7 @@ export default function AdminSettingsPage() {
                       value={apiKey}
                       onChange={(e) => { setApiKey(e.target.value); setSaved(false); setTestResult("") }}
                       placeholder="sk-..."
-                      className="mt-2 h-11 w-full rounded-2xl border border-zinc-200 px-4 text-sm outline-none transition focus:border-[hsl(var(--otiva-orange))]"
+                      className="mt-2 h-11 w-full rounded-2xl border border-zinc-200 px-4 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))]"
                     />
                   </div>
                   <button
@@ -178,7 +178,7 @@ export default function AdminSettingsPage() {
                     {testing ? "Проверяем соединение…" : "Проверить подключение"}
                   </button>
                   {testResult && (
-                    <p className={`rounded-2xl px-4 py-3 text-sm font-medium ${testResult.startsWith("ok:") ? "bg-[hsl(var(--otiva-mint)/0.12)] text-[hsl(var(--otiva-mint))]" : "bg-red-50 text-red-600"}`}>
+                    <p className={`rounded-2xl px-4 py-3 text-sm font-medium ${testResult.startsWith("ok:") ? "bg-[hsl(var(--nashlo-mint)/0.12)] text-[hsl(var(--nashlo-mint))]" : "bg-red-50 text-red-600"}`}>
                       {testResult.split(":").slice(1).join(":")}
                     </p>
                   )}
@@ -193,7 +193,7 @@ export default function AdminSettingsPage() {
                     <button
                       key={c.id}
                       onClick={() => toggleAiCheck(c.id)}
-                      className={`rounded-full border px-4 py-2 text-sm font-medium transition ${aiChecks[c.id] ? "border-[hsl(var(--otiva-orange))] bg-[hsl(var(--otiva-orange)/0.08)] text-[hsl(var(--otiva-orange))]" : "border-zinc-200 text-zinc-500 hover:border-zinc-300"}`}
+                      className={`rounded-full border px-4 py-2 text-sm font-medium transition ${aiChecks[c.id] ? "border-[hsl(var(--nashlo-orange))] bg-[hsl(var(--nashlo-orange)/0.08)] text-[hsl(var(--nashlo-orange))]" : "border-zinc-200 text-zinc-500 hover:border-zinc-300"}`}
                     >
                       {aiChecks[c.id] ? "✓ " : ""}{c.label}
                     </button>
@@ -207,12 +207,12 @@ export default function AdminSettingsPage() {
                   <p className="text-sm font-medium text-zinc-700">Действие при срабатывании</p>
                   <div className="mt-2 space-y-2">
                     {([
-                      { id: "flag",    label: "Отправить на ручную проверку", color: "border-[hsl(var(--otiva-orange))]" },
+                      { id: "flag",    label: "Отправить на ручную проверку", color: "border-[hsl(var(--nashlo-orange))]" },
                       { id: "reject",  label: "Автоматически отклонить",       color: "border-red-400" },
-                      { id: "approve", label: "Автоматически одобрить",         color: "border-[hsl(var(--otiva-mint))]" },
+                      { id: "approve", label: "Автоматически одобрить",         color: "border-[hsl(var(--nashlo-mint))]" },
                     ] as const).map((a) => (
                       <label key={a.id} className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-3 transition ${aiAction === a.id ? a.color + " bg-zinc-50" : "border-zinc-200"}`}>
-                        <input type="radio" name="aiAction" checked={aiAction === a.id} onChange={() => { setAiAction(a.id); setSaved(false) }} className="accent-[hsl(var(--otiva-orange))]" />
+                        <input type="radio" name="aiAction" checked={aiAction === a.id} onChange={() => { setAiAction(a.id); setSaved(false) }} className="accent-[hsl(var(--nashlo-orange))]" />
                         <span className="text-sm font-medium text-zinc-950">{a.label}</span>
                       </label>
                     ))}
@@ -221,7 +221,7 @@ export default function AdminSettingsPage() {
 
                 <div>
                   <p className="text-sm font-medium text-zinc-700">
-                    Порог уверенности: <span className="text-[hsl(var(--otiva-orange))]">{threshold}%</span>
+                    Порог уверенности: <span className="text-[hsl(var(--nashlo-orange))]">{threshold}%</span>
                   </p>
                   <p className="mt-1 text-xs text-zinc-500">Ниже порога — решение передаётся модератору</p>
                   <input
@@ -229,7 +229,7 @@ export default function AdminSettingsPage() {
                     min={50} max={99} step={1}
                     value={threshold}
                     onChange={(e) => { setThreshold(Number(e.target.value)); setSaved(false) }}
-                    className="mt-4 w-full accent-[hsl(var(--otiva-orange))]"
+                    className="mt-4 w-full accent-[hsl(var(--nashlo-orange))]"
                   />
                   <div className="mt-1 flex justify-between text-xs text-zinc-400">
                     <span>50% — мягко</span>
@@ -245,7 +245,7 @@ export default function AdminSettingsPage() {
                 <textarea
                   value={aiPrompt}
                   onChange={(e) => { setAiPrompt(e.target.value); setSaved(false) }}
-                  className="mt-2 h-28 w-full rounded-2xl border border-zinc-200 px-4 py-3 font-mono text-xs text-zinc-950 outline-none transition focus:border-[hsl(var(--otiva-orange))]"
+                  className="mt-2 h-28 w-full rounded-2xl border border-zinc-200 px-4 py-3 font-mono text-xs text-zinc-950 outline-none transition focus:border-[hsl(var(--nashlo-orange))]"
                 />
               </div>
             </div>
@@ -269,7 +269,7 @@ export default function AdminSettingsPage() {
               </div>
               <label className="relative inline-flex cursor-pointer items-center">
                 <input type="checkbox" checked={f.enabled} onChange={() => toggleFilter(f.id)} className="sr-only peer" />
-                <div className="h-6 w-11 rounded-full bg-zinc-200 transition peer-checked:bg-[hsl(var(--otiva-orange))] after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:after:translate-x-5" />
+                <div className="h-6 w-11 rounded-full bg-zinc-200 transition peer-checked:bg-[hsl(var(--nashlo-orange))] after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:after:translate-x-5" />
               </label>
             </div>
           ))}
@@ -282,17 +282,17 @@ export default function AdminSettingsPage() {
         <p className="mt-1 text-sm text-zinc-500">Дополнительные модули, которые усиливают автоматическую модерацию.</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {plugins.map((p) => (
-            <div key={p.id} className={`flex items-start gap-4 rounded-[20px] border p-4 transition ${p.active ? "border-[hsl(var(--otiva-orange)/0.4)] bg-[hsl(var(--otiva-orange)/0.04)]" : "border-zinc-200 bg-white"}`}>
+            <div key={p.id} className={`flex items-start gap-4 rounded-[20px] border p-4 transition ${p.active ? "border-[hsl(var(--nashlo-orange)/0.4)] bg-[hsl(var(--nashlo-orange)/0.04)]" : "border-zinc-200 bg-white"}`}>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-zinc-950">{p.title}</p>
-                  {p.active && <span className="rounded-full bg-[hsl(var(--otiva-mint)/0.15)] px-2 py-0.5 text-[11px] font-semibold text-[hsl(var(--otiva-mint))]">Активен</span>}
+                  {p.active && <span className="rounded-full bg-[hsl(var(--nashlo-mint)/0.15)] px-2 py-0.5 text-[11px] font-semibold text-[hsl(var(--nashlo-mint))]">Активен</span>}
                 </div>
                 <p className="mt-1 text-sm leading-5 text-zinc-500">{p.desc}</p>
               </div>
               <label className="relative mt-0.5 inline-flex shrink-0 cursor-pointer items-center">
                 <input type="checkbox" checked={p.active} onChange={() => togglePlugin(p.id)} className="sr-only peer" />
-                <div className="h-6 w-11 rounded-full bg-zinc-200 transition peer-checked:bg-[hsl(var(--otiva-orange))] after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:after:translate-x-5" />
+                <div className="h-6 w-11 rounded-full bg-zinc-200 transition peer-checked:bg-[hsl(var(--nashlo-orange))] after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:after:translate-x-5" />
               </label>
             </div>
           ))}
@@ -306,7 +306,7 @@ export default function AdminSettingsPage() {
         <textarea
           value={stopWords}
           onChange={(e) => { setStopWords(e.target.value); setSaved(false) }}
-          className="mt-4 h-40 w-full rounded-[20px] border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-950 outline-none transition focus:border-[hsl(var(--otiva-orange))]"
+          className="mt-4 h-40 w-full rounded-[20px] border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-950 outline-none transition focus:border-[hsl(var(--nashlo-orange))]"
         />
       </section>
 

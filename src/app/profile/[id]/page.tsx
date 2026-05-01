@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation"
+﻿import { notFound } from "next/navigation"
 import { ListingCard } from "@/components/marketplace/ListingCard"
 import { listings } from "@/lib/mock-marketplace"
 import { getReviews } from "@/lib/mock-reviews"
@@ -34,14 +34,14 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
               <span className="text-lg font-bold text-zinc-950">{seller.rating}</span>
               <div className="flex gap-0.5">
                 {[1,2,3,4,5].map((s) => (
-                  <span key={s} className={`text-base ${s <= Math.round(seller.rating) ? "text-[hsl(var(--otiva-orange))]" : "text-zinc-200"}`}>★</span>
+                  <span key={s} className={`text-base ${s <= Math.round(seller.rating) ? "text-[hsl(var(--nashlo-orange))]" : "text-zinc-200"}`}>★</span>
                 ))}
               </div>
               <span className="text-sm text-zinc-500">({reviews.length})</span>
             </div>
 
             {seller.verified && (
-              <div className="mt-4 rounded-2xl bg-[hsl(var(--otiva-mint)/0.12)] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--otiva-mint))]">
+              <div className="mt-4 rounded-2xl bg-[hsl(var(--nashlo-mint)/0.12)] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--nashlo-mint))]">
                 ✓ Проверенный продавец
               </div>
             )}
@@ -57,7 +57,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
               </div>
             </div>
 
-            <button className="mt-4 w-full rounded-2xl bg-[hsl(var(--otiva-orange))] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[hsl(var(--otiva-orange)/0.9)]">
+            <button className="mt-4 w-full rounded-2xl bg-[hsl(var(--nashlo-orange))] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[hsl(var(--nashlo-orange)/0.9)]">
               Написать продавцу
             </button>
           </div>

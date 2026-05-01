@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import { getListingById } from '@/lib/mock-marketplace'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 
@@ -15,8 +16,16 @@ const updateSchema = z.object({
   status: z.enum(['ACTIVE', 'SOLD', 'ARCHIVED']).optional(),
 })
 
+function mockListing(id: string) {
+  const listing = getListingById(id)
+  if (!listing) {
+    return NextResponse.json({ error: 'Объявление не найдено' }, { status: 404 })
+  }
+  return NextResponse.json({ listing, source: 'mock' })
+}
+
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -40,11 +49,8 @@ export async function GET(
       },
     })
 
-    if (!listing) {
-      return NextResponse.json({ error: 'Объявление не найдено' }, { status: 404 })
-    }
+    if (!listing) return mockListing(params.id)
 
-    // Increment views (fire and forget)
     prisma.listing.update({
       where: { id: params.id },
       data: { views: { increment: 1 } },
@@ -52,8 +58,8 @@ export async function GET(
 
     return NextResponse.json({ listing })
   } catch (error) {
-    console.error('listing GET error:', error)
-    return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
+    console.error('listing GET fallback to mock:', error)
+    return mockListing(params.id)
   }
 }
 
@@ -82,7 +88,6 @@ export async function PATCH(
     const body = await request.json()
     const data = updateSchema.parse(body)
 
-    // Non-admins cannot change status to ACTIVE directly (requires moderation)
     if (!isAdmin && data.status === 'ACTIVE') {
       delete data.status
     }
@@ -119,7 +124,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {

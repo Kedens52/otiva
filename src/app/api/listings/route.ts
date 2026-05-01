@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import { listings } from '@/lib/mock-marketplace'
 import { z } from 'zod'
 import { Prisma, type ListingStatus } from '@prisma/client'
 
@@ -14,6 +15,37 @@ const createSchema = z.object({
   city: z.string().max(100).optional(),
   attributes: z.record(z.unknown()).optional(),
 })
+
+function mockListingsResponse(request: NextRequest) {
+  const { searchParams } = request.nextUrl
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
+  const pageSize = Math.min(50, parseInt(searchParams.get('pageSize') || '20'))
+  const categorySlug = searchParams.get('category')
+  const city = searchParams.get('city')
+  const query = searchParams.get('q')?.trim().toLowerCase()
+  const priceMin = searchParams.get('priceMin') ? parseInt(searchParams.get('priceMin')!) : undefined
+  const priceMax = searchParams.get('priceMax') ? parseInt(searchParams.get('priceMax')!) : undefined
+
+  const filtered = listings.filter((item) => {
+    const text = `${item.title} ${item.subtitle} ${item.description}`.toLowerCase()
+    const matchesCategory = !categorySlug || item.category === categorySlug
+    const matchesCity = !city || item.city === city
+    const matchesQuery = !query || text.includes(query)
+    const matchesMin = priceMin === undefined || item.price >= priceMin
+    const matchesMax = priceMax === undefined || item.price <= priceMax
+    return matchesCategory && matchesCity && matchesQuery && matchesMin && matchesMax
+  })
+
+  const start = (page - 1) * pageSize
+  return NextResponse.json({
+    items: filtered.slice(start, start + pageSize),
+    total: filtered.length,
+    page,
+    pageSize,
+    totalPages: Math.ceil(filtered.length / pageSize),
+    source: 'mock',
+  })
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,12 +64,8 @@ export async function GET(request: NextRequest) {
       status: 'ACTIVE' as ListingStatus,
     }
 
-    if (categorySlug) {
-      where.category = { slug: categorySlug }
-    }
-    if (city) {
-      where.city = city
-    }
+    if (categorySlug) where.category = { slug: categorySlug }
+    if (city) where.city = city
     if (query) {
       where.OR = [
         { title: { contains: query, mode: 'insensitive' } },
@@ -86,8 +114,8 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / pageSize),
     })
   } catch (error) {
-    console.error('listings GET error:', error)
-    return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
+    console.error('listings GET fallback to mock:', error)
+    return mockListingsResponse(request)
   }
 }
 

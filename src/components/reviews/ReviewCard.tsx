@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import type { Review } from "@/lib/mock-reviews"
@@ -7,7 +7,7 @@ function Stars({ value, size = "sm" }: { value: number; size?: "sm" | "lg" }) {
   return (
     <span className={`inline-flex gap-0.5 ${size === "lg" ? "text-2xl" : "text-sm"}`}>
       {[1, 2, 3, 4, 5].map((s) => (
-        <span key={s} className={s <= value ? "text-[hsl(var(--otiva-orange))]" : "text-zinc-200"}>★</span>
+        <span key={s} className={s <= value ? "text-[hsl(var(--nashlo-orange))]" : "text-zinc-200"}>★</span>
       ))}
     </span>
   )
@@ -20,7 +20,7 @@ export function ReviewCard({ review }: { review: Review }) {
   return (
     <article className="rounded-[24px] border border-zinc-100 bg-white p-5 shadow-sm">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--otiva-orange)/0.12)] text-sm font-semibold text-[hsl(var(--otiva-orange))]">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--nashlo-orange)/0.12)] text-sm font-semibold text-[hsl(var(--nashlo-orange))]">
           {review.avatar}
         </div>
         <div className="min-w-0 flex-1">
@@ -41,7 +41,7 @@ export function ReviewCard({ review }: { review: Review }) {
         <p className="truncate text-xs text-zinc-400">По объявлению: {review.listingTitle}</p>
         <button
           onClick={() => { if (!voted) { setHelpful((h) => h + 1); setVoted(true) } }}
-          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition ${voted ? "border-[hsl(var(--otiva-mint)/0.4)] bg-[hsl(var(--otiva-mint)/0.08)] text-[hsl(var(--otiva-mint))]" : "border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:text-zinc-950"}`}
+          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition ${voted ? "border-[hsl(var(--nashlo-mint)/0.4)] bg-[hsl(var(--nashlo-mint)/0.08)] text-[hsl(var(--nashlo-mint))]" : "border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:text-zinc-950"}`}
         >
           👍 {helpful}
         </button>

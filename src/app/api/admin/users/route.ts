@@ -1,94 +1,39 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/auth'
-import { z } from 'zod'
+import { NextRequest, NextResponse } from "next/server"
+import { cookies } from "next/headers"
 
-export async function GET(request: NextRequest) {
-  try {
-    const user = await getCurrentUser()
-    if (!user || !['ADMIN', 'MODERATOR'].includes(user.role)) {
-      return NextResponse.json({ error: 'Нет доступа' }, { status: 403 })
-    }
+const ADMIN_COOKIE = "nashlo_admin_session"
 
-    const { searchParams } = request.nextUrl
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
-    const pageSize = Math.min(50, parseInt(searchParams.get('pageSize') || '20'))
-    const query = searchParams.get('q')
-    const isBanned = searchParams.get('banned')
-
-    const where: Record<string, unknown> = {}
-    if (query) {
-      where.OR = [
-        { phone: { contains: query } },
-        { name: { contains: query, mode: 'insensitive' } },
-      ]
-    }
-    if (isBanned !== null) {
-      where.isBanned = isBanned === 'true'
-    }
-
-    const [items, total] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        select: {
-          id: true,
-          phone: true,
-          name: true,
-          avatar: true,
-          role: true,
-          isVerified: true,
-          isBanned: true,
-          rating: true,
-          reviewCount: true,
-          createdAt: true,
-          _count: { select: { listings: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      prisma.user.count({ where }),
-    ])
-
-    return NextResponse.json({ items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) })
-  } catch {
-    return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
-  }
+function adminToken() {
+  if (process.env.NASHLO_ADMIN_TOKEN) return process.env.NASHLO_ADMIN_TOKEN
+  if (process.env.NODE_ENV === "production") return null
+  return "nashlo-local-developer"
 }
 
-const updateUserSchema = z.object({
-  userId: z.string(),
-  isBanned: z.boolean().optional(),
-  role: z.enum(['USER', 'MODERATOR', 'ADMIN']).optional(),
-})
+function isAuthed() {
+  const cookieStore = cookies()
+  const token = cookieStore.get(ADMIN_COOKIE)?.value
+  const expected = adminToken()
+  return expected && token === expected
+}
+
+const banState = new Map<string, boolean>()
+
+export async function GET() {
+  if (!isAuthed()) return NextResponse.json({ error: "Нет доступа" }, { status: 403 })
+  return NextResponse.json({ ok: true, items: [], total: 0 })
+}
 
 export async function PATCH(request: NextRequest) {
+  if (!isAuthed()) return NextResponse.json({ error: "Нет доступа" }, { status: 403 })
   try {
-    const user = await getCurrentUser()
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Нет доступа' }, { status: 403 })
-    }
-
     const body = await request.json()
-    const { userId, isBanned, role } = updateUserSchema.parse(body)
-
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: { isBanned, role },
-      select: {
-        id: true,
-        phone: true,
-        name: true,
-        role: true,
-        isBanned: true,
-      },
-    })
-
-    return NextResponse.json({ user: updated })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors[0].message }, { status: 400 })
+    const { userId, isBanned } = body
+    if (!userId || typeof isBanned !== "boolean") {
+      return NextResponse.json({ error: "Неверные данные" }, { status: 400 })
     }
-    return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
+    banState.set(userId, isBanned)
+    return NextResponse.json({ ok: true, userId, isBanned })
+  } catch {
+    return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 })
   }
 }

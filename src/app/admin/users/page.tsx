@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 
@@ -14,9 +14,9 @@ const USERS = [
 ]
 
 const STATUS_COLOR: Record<UserStatus, string> = {
-  "Активен":      "bg-[hsl(var(--otiva-mint)/0.15)] text-[hsl(var(--otiva-mint))]",
+  "Активен":      "bg-[hsl(var(--nashlo-mint)/0.15)] text-[hsl(var(--nashlo-mint))]",
   "Заблокирован": "bg-red-100 text-red-600",
-  "На проверке":  "bg-[hsl(var(--otiva-orange)/0.12)] text-[hsl(var(--otiva-orange))]",
+  "На проверке":  "bg-[hsl(var(--nashlo-orange)/0.12)] text-[hsl(var(--nashlo-orange))]",
 }
 
 export default function AdminUsersPage() {
@@ -56,7 +56,7 @@ export default function AdminUsersPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Поиск по имени, телефону или городу…"
-          className="h-11 w-full max-w-sm rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-[hsl(var(--otiva-orange))]"
+          className="h-11 w-full max-w-sm rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))]"
         />
       </div>
 
@@ -71,7 +71,7 @@ export default function AdminUsersPage() {
               <div key={user.id} className="grid gap-3 px-5 py-4 lg:grid-cols-[minmax(0,2fr)_1fr_0.7fr_0.7fr_1fr_auto] lg:items-center">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--otiva-orange)/0.15)] text-sm font-semibold text-[hsl(var(--otiva-orange))]">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--nashlo-orange)/0.15)] text-sm font-semibold text-[hsl(var(--nashlo-orange))]">
                       {user.name[0]}
                     </div>
                     <div className="min-w-0">

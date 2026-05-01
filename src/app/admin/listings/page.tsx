@@ -1,4 +1,4 @@
-import { listings } from "@/lib/mock-marketplace"
+﻿import { listings } from "@/lib/mock-marketplace"
 import Link from "next/link"
 
 export default function AdminListingsPage() {
@@ -9,7 +9,7 @@ export default function AdminListingsPage() {
           <h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Модерация объявлений</h1>
           <p className="mt-2 text-zinc-500">Быстрая очередь объявлений на проверку.</p>
         </div>
-        <Link href="/admin/moderation" className="rounded-2xl bg-[hsl(var(--otiva-orange))] px-5 py-3 text-sm font-semibold text-white shadow-sm">
+        <Link href="/admin/moderation" className="rounded-2xl bg-[hsl(var(--nashlo-orange))] px-5 py-3 text-sm font-semibold text-white shadow-sm">
           Открыть панель модерации
         </Link>
       </div>

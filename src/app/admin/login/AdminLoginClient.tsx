@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
@@ -58,7 +58,7 @@ export default function AdminLoginClient() {
               onKeyDown={(event) => {
                 if (event.key === "Enter") submit()
               }}
-              className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-[hsl(var(--otiva-orange))]"
+              className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))]"
               placeholder="Введите код"
               type="password"
               autoFocus
@@ -69,7 +69,7 @@ export default function AdminLoginClient() {
             type="button"
             onClick={submit}
             disabled={loading || code.trim().length === 0}
-            className="mt-4 h-12 w-full rounded-2xl bg-[hsl(var(--otiva-orange))] px-5 text-sm font-semibold text-white transition hover:bg-[hsl(var(--otiva-orange)/0.9)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-4 h-12 w-full rounded-2xl bg-[hsl(var(--nashlo-orange))] px-5 text-sm font-semibold text-white transition hover:bg-[hsl(var(--nashlo-orange)/0.9)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Проверяем..." : "Открыть админ-панель"}
           </button>
@@ -81,7 +81,7 @@ export default function AdminLoginClient() {
           )}
 
           <p className="mt-5 text-xs leading-5 text-zinc-400">
-            Для демо код: otiva-dev. Для продакшена задай переменные окружения.
+            Доступ только для владельца проекта. Код хранится в переменных окружения.
           </p>
         </div>
       </section>

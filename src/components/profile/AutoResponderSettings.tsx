@@ -1,11 +1,11 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState } from "react"
 
-const OPENER_KEY    = "otiva-opener-template"
-const AUTOREPLY_KEY = "otiva-autoreply-enabled"
-const REPLIES_KEY   = "otiva-autoreply-text"
-const DELAY_KEY     = "otiva-autoreply-delay"
+const OPENER_KEY    = "nashlo-opener-template"
+const AUTOREPLY_KEY = "nashlo-autoreply-enabled"
+const REPLIES_KEY   = "nashlo-autoreply-text"
+const DELAY_KEY     = "nashlo-autoreply-delay"
 
 const DEFAULT_OPENER = "Здравствуйте! Меня интересует ваше объявление «{listing}». Оно ещё актуально?"
 const DEFAULT_REPLY  = "Здравствуйте! Спасибо за интерес. Объявление актуально, готов ответить на вопросы."
@@ -66,7 +66,7 @@ export function AutoResponderSettings() {
           value={opener}
           onChange={(e) => setOpener(e.target.value)}
           rows={3}
-          className="mt-2 w-full resize-none rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-zinc-950 outline-none transition focus:border-[hsl(var(--otiva-orange))]"
+          className="mt-2 w-full resize-none rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-zinc-950 outline-none transition focus:border-[hsl(var(--nashlo-orange))]"
         />
         <div className="mt-2 flex flex-wrap gap-2">
           {[
@@ -74,7 +74,7 @@ export function AutoResponderSettings() {
             "Добрый день, возможен торг?",
             "Привет! Можно посмотреть сегодня?",
           ].map((t) => (
-            <button key={t} onClick={() => setOpener(t)} className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs text-zinc-600 transition hover:border-[hsl(var(--otiva-orange))] hover:text-[hsl(var(--otiva-orange))]">
+            <button key={t} onClick={() => setOpener(t)} className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs text-zinc-600 transition hover:border-[hsl(var(--nashlo-orange))] hover:text-[hsl(var(--nashlo-orange))]">
               {t}
             </button>
           ))}
@@ -90,7 +90,7 @@ export function AutoResponderSettings() {
           </div>
           <label className="relative inline-flex cursor-pointer items-center shrink-0">
             <input type="checkbox" checked={enabled} onChange={() => setEnabled((v) => !v)} className="sr-only peer" />
-            <div className="h-6 w-11 rounded-full bg-zinc-200 transition peer-checked:bg-[hsl(var(--otiva-orange))] after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:after:translate-x-5" />
+            <div className="h-6 w-11 rounded-full bg-zinc-200 transition peer-checked:bg-[hsl(var(--nashlo-orange))] after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:after:translate-x-5" />
           </label>
         </div>
 
@@ -102,7 +102,7 @@ export function AutoResponderSettings() {
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 rows={3}
-                className="mt-2 w-full resize-none rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-950 outline-none transition focus:border-[hsl(var(--otiva-orange))]"
+                className="mt-2 w-full resize-none rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-950 outline-none transition focus:border-[hsl(var(--nashlo-orange))]"
               />
               <div className="mt-2 flex flex-wrap gap-2">
                 {[
@@ -110,7 +110,7 @@ export function AutoResponderSettings() {
                   "Здравствуйте! Да, в наличии. Когда удобно созвониться?",
                   "Добрый день! Отвечу чуть позже, сейчас занят.",
                 ].map((t) => (
-                  <button key={t} onClick={() => setReplyText(t)} className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 transition hover:border-[hsl(var(--otiva-orange))] hover:text-[hsl(var(--otiva-orange))]">
+                  <button key={t} onClick={() => setReplyText(t)} className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 transition hover:border-[hsl(var(--nashlo-orange))] hover:text-[hsl(var(--nashlo-orange))]">
                     {t.length > 36 ? t.slice(0, 36) + "…" : t}
                   </button>
                 ))}
@@ -124,7 +124,7 @@ export function AutoResponderSettings() {
                   <button
                     key={d.value}
                     onClick={() => setDelay(d.value)}
-                    className={`rounded-2xl border-2 py-2.5 text-sm font-medium transition ${delay === d.value ? "border-[hsl(var(--otiva-orange))] bg-white text-[hsl(var(--otiva-orange))]" : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300"}`}
+                    className={`rounded-2xl border-2 py-2.5 text-sm font-medium transition ${delay === d.value ? "border-[hsl(var(--nashlo-orange))] bg-white text-[hsl(var(--nashlo-orange))]" : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300"}`}
                   >
                     {d.label}
                   </button>

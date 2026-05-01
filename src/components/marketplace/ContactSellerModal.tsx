@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useRef, useState } from "react"
 import { getOrCreateConversation, sendMessage as chatSend } from "@/lib/chat-store"
@@ -14,7 +14,7 @@ type Props = {
   onClose: () => void
 }
 
-const OPENER_KEY = "otiva-opener-template"
+const OPENER_KEY = "nashlo-opener-template"
 const DEFAULT_OPENER = "Здравствуйте! Меня интересует ваше объявление «{listing}». Оно ещё актуально?"
 
 export function ContactSellerModal({ sellerName, sellerPhone, listingTitle, listingId = "0", listingCategory = "cars", city = "", onClose }: Props) {
@@ -37,10 +37,10 @@ export function ContactSellerModal({ sellerName, sellerPhone, listingTitle, list
     chatSend(listingId, message.trim(), "me")
 
     // Auto-responder
-    const autoEnabled = localStorage.getItem("otiva-autoreply-enabled") === "true"
+    const autoEnabled = localStorage.getItem("nashlo-autoreply-enabled") === "true"
     if (autoEnabled) {
-      const reply = localStorage.getItem("otiva-autoreply-text") || "Здравствуйте! Объявление актуально, готов ответить на вопросы."
-      const delay = Number(localStorage.getItem("otiva-autoreply-delay") || "0") * 1000
+      const reply = localStorage.getItem("nashlo-autoreply-text") || "Здравствуйте! Объявление актуально, готов ответить на вопросы."
+      const delay = Number(localStorage.getItem("nashlo-autoreply-delay") || "0") * 1000
       setTimeout(() => { chatSend(listingId, reply, "seller") }, Math.max(delay, 800))
     }
     setSent(true)
@@ -56,10 +56,10 @@ export function ContactSellerModal({ sellerName, sellerPhone, listingTitle, list
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-end justify-center bg-zinc-950/50 px-4 pb-4 sm:items-center"
+      className="fixed inset-0 z-[200] flex items-end justify-center bg-zinc-950/50 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:items-center sm:pb-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full max-w-md overflow-hidden rounded-[28px] bg-white shadow-2xl">
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-[28px] bg-white shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
           <div className="min-w-0">
@@ -109,12 +109,12 @@ export function ContactSellerModal({ sellerName, sellerPhone, listingTitle, list
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   rows={4}
-                  className="w-full resize-none rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-zinc-950 outline-none transition focus:border-[hsl(var(--otiva-orange))]"
+                  className="w-full resize-none rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-zinc-950 outline-none transition focus:border-[hsl(var(--nashlo-orange))]"
                 />
                 <button
                   onClick={send}
                   disabled={!message.trim()}
-                  className="mt-3 w-full rounded-2xl bg-[hsl(var(--otiva-orange))] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[hsl(var(--otiva-orange)/0.9)] disabled:opacity-40"
+                  className="mt-3 w-full rounded-2xl bg-[hsl(var(--nashlo-orange))] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[hsl(var(--nashlo-orange)/0.9)] disabled:opacity-40"
                 >
                   Отправить сообщение
                 </button>
@@ -142,13 +142,13 @@ export function ContactSellerModal({ sellerName, sellerPhone, listingTitle, list
               ) : (
                 <a
                   href={`tel:${phone.replace(/\D/g, "")}`}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[hsl(var(--otiva-mint))] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[hsl(var(--nashlo-mint))] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
                 >
                   📞 Позвонить
                 </a>
               )}
               <p className="text-center text-xs text-zinc-400">
-                Звонки и переписка защищены политикой Отивы
+                Звонки и переписка защищены политикой Нашло
               </p>
             </div>
           )}
