@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { signToken, COOKIE_NAME, COOKIE_OPTIONS } from "@/lib/auth"
+import { getSession, signToken, COOKIE_NAME, COOKIE_OPTIONS } from "@/lib/auth"
 import { findOrCreateOAuthUser } from "@/lib/oauth-users"
 
 type YandexPhone = {
@@ -75,14 +75,18 @@ export async function GET(request: NextRequest) {
       : null
     const phone = yandexUser.default_phone?.number || yandexUser.phones?.[0]?.number || null
 
-    const user = await findOrCreateOAuthUser({
-      provider: "yandex",
-      providerId: String(yandexUser.id),
-      email: yandexUser.default_email || null,
-      phone,
-      name: yandexUser.real_name || yandexUser.display_name || yandexUser.login || "Пользователь Яндекса",
-      avatar,
-    })
+    const session = await getSession()
+    const user = await findOrCreateOAuthUser(
+      {
+        provider: "yandex",
+        providerId: String(yandexUser.id),
+        email: yandexUser.default_email || null,
+        phone,
+        name: yandexUser.real_name || yandexUser.display_name || yandexUser.login || "Пользователь Яндекса",
+        avatar,
+      },
+      { preferredUserId: session?.userId },
+    )
 
     if (user.isBanned) {
       return NextResponse.redirect(`${baseUrl}/login?error=banned`)

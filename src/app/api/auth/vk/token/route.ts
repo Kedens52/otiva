@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { signToken, setAuthCookie } from "@/lib/auth"
+import { getSession, signToken, setAuthCookie } from "@/lib/auth"
 import { findOrCreateOAuthUser } from "@/lib/oauth-users"
 
 type VkPayload = {
@@ -93,15 +93,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "VK вернул данные без профиля" }, { status: 400 })
     }
 
-    const user = await findOrCreateOAuthUser({
-      provider: "vk",
-      providerId: profile.vkId,
-      email: profile.email,
-      phone: profile.phone,
-      name: profile.name,
-      avatar: profile.avatar,
-      city: profile.city,
-    })
+    const session = await getSession()
+    const user = await findOrCreateOAuthUser(
+      {
+        provider: "vk",
+        providerId: profile.vkId,
+        email: profile.email,
+        phone: profile.phone,
+        name: profile.name,
+        avatar: profile.avatar,
+        city: profile.city,
+      },
+      { preferredUserId: session?.userId },
+    )
 
     if (user.isBanned) {
       return NextResponse.json({ error: "Аккаунт заблокирован" }, { status: 403 })
@@ -115,7 +119,21 @@ export async function POST(request: NextRequest) {
 
     setAuthCookie(token)
 
-    return NextResponse.json({ ok: true, user: { id: user.id, name: user.name, avatar: user.avatar } })
+    return NextResponse.json({
+      ok: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        avatar: user.avatar,
+        phone: user.phone,
+        email: user.email,
+        authProviders: {
+          phone: Boolean(user.phone),
+          vk: Boolean(user.vkId),
+          yandex: Boolean(user.yandexId),
+        },
+      },
+    })
   } catch (error) {
     console.error("VK token error:", error)
     return NextResponse.json({ error: "Ошибка авторизации" }, { status: 500 })

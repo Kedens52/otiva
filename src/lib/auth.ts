@@ -54,6 +54,9 @@ export async function getCurrentUser() {
     select: {
       id: true,
       phone: true,
+      email: true,
+      vkId: true,
+      yandexId: true,
       name: true,
       avatar: true,
       description: true,
@@ -68,7 +71,14 @@ export async function getCurrentUser() {
   })
 
   if (!user || user.isBanned) return null
-  return user
+  return {
+    ...user,
+    authProviders: {
+      phone: Boolean(user.phone),
+      vk: Boolean(user.vkId),
+      yandex: Boolean(user.yandexId),
+    },
+  }
 }
 
 export function setAuthCookie(token: string) {
@@ -94,7 +104,7 @@ export async function sendSmsCode(phone: string, code: string): Promise<void> {
   const params = new URLSearchParams({
     api_id: process.env.SMS_API_KEY,
     to: phone,
-    msg: `Ваш код для входа на Otiva: ${code}`,
+    msg: `Ваш код для входа на Нашло: ${code}`,
     json: '1',
     from: 'Nashlo',
   })

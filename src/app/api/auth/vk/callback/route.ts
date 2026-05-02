@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { signToken, COOKIE_NAME, COOKIE_OPTIONS } from "@/lib/auth"
+import { getSession, signToken, COOKIE_NAME, COOKIE_OPTIONS } from "@/lib/auth"
 import { findOrCreateOAuthUser } from "@/lib/oauth-users"
 
 export async function GET(request: NextRequest) {
@@ -40,14 +40,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${baseUrl}/login?error=vk_user`)
     }
 
-    const user = await findOrCreateOAuthUser({
-      provider: "vk",
-      providerId: String(vkUser.id),
-      email,
-      name: `${vkUser.first_name || ""} ${vkUser.last_name || ""}`.trim(),
-      avatar: vkUser.photo_200 || null,
-      city: vkUser.city?.title || null,
-    })
+    const session = await getSession()
+    const user = await findOrCreateOAuthUser(
+      {
+        provider: "vk",
+        providerId: String(vkUser.id),
+        email,
+        name: `${vkUser.first_name || ""} ${vkUser.last_name || ""}`.trim(),
+        avatar: vkUser.photo_200 || null,
+        city: vkUser.city?.title || null,
+      },
+      { preferredUserId: session?.userId },
+    )
 
     if (user.isBanned) {
       return NextResponse.redirect(`${baseUrl}/login?error=banned`)

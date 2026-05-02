@@ -15,6 +15,9 @@ type OAuthProfile = {
 }
 
 type Tx = Prisma.TransactionClient
+type SyncOptions = {
+  preferredUserId?: string | null
+}
 
 function clean(value?: string | null) {
   const next = value?.trim()
@@ -32,10 +35,6 @@ function providerWhere(provider: OAuthProvider, providerId: string): Prisma.User
   return provider === "vk" ? { vkId: providerId } : { yandexId: providerId }
 }
 
-function providerData(provider: OAuthProvider, providerId: string): Prisma.UserUpdateInput {
-  return provider === "vk" ? { vkId: providerId } : { yandexId: providerId }
-}
-
 function providerCreateData(provider: OAuthProvider, providerId: string): Prisma.UserCreateInput {
   return provider === "vk" ? { vkId: providerId } : { yandexId: providerId }
 }
@@ -44,8 +43,9 @@ function isSameProvider(user: User, provider: OAuthProvider, providerId: string)
   return provider === "vk" ? user.vkId === providerId : user.yandexId === providerId
 }
 
-function pickPrimary(users: User[], profile: OAuthProfile, email: string | null, phone: string | null) {
+function pickPrimary(users: User[], profile: OAuthProfile, email: string | null, phone: string | null, preferredUserId?: string | null) {
   return (
+    users.find((user) => preferredUserId && user.id === preferredUserId) ||
     users.find((user) => email && user.email === email) ||
     users.find((user) => phone && user.phone === phone) ||
     users.find((user) => isSameProvider(user, profile.provider, profile.providerId)) ||
@@ -114,14 +114,34 @@ async function mergeUserIntoPrimary(tx: Tx, primaryId: string, duplicateId: stri
   await tx.user.delete({ where: { id: duplicateId } })
 }
 
-export async function findOrCreateOAuthUser(profile: OAuthProfile) {
+function pickMergedUserData(primary: User, duplicates: User[], profile: OAuthProfile, email: string | null, phone: string | null) {
+  const all = [primary, ...duplicates]
+  const vkId = profile.provider === "vk"
+    ? profile.providerId
+    : primary.vkId || all.find((user) => user.vkId)?.vkId || null
+  const yandexId = profile.provider === "yandex"
+    ? profile.providerId
+    : primary.yandexId || all.find((user) => user.yandexId)?.yandexId || null
+
+  return {
+    vkId,
+    yandexId,
+    email: primary.email || email || all.find((user) => user.email)?.email || null,
+    phone: primary.phone || phone || all.find((user) => user.phone)?.phone || null,
+    name: primary.name || clean(profile.name) || all.find((user) => user.name)?.name || null,
+    avatar: primary.avatar || clean(profile.avatar) || all.find((user) => user.avatar)?.avatar || null,
+    city: primary.city || clean(profile.city) || all.find((user) => user.city)?.city || null,
+    isVerified: primary.isVerified || Boolean(phone) || all.some((user) => user.isVerified),
+  }
+}
+
+export async function findOrCreateOAuthUser(profile: OAuthProfile, options: SyncOptions = {}) {
   const providerId = profile.providerId
   const email = clean(profile.email)?.toLowerCase() ?? null
   const phone = cleanPhone(profile.phone)
   const name = clean(profile.name)
   const avatar = clean(profile.avatar)
   const city = clean(profile.city)
-  const provider = providerData(profile.provider, providerId)
   const providerCreate = providerCreateData(profile.provider, providerId)
 
   return prisma.$transaction(async (tx) => {
@@ -129,6 +149,7 @@ export async function findOrCreateOAuthUser(profile: OAuthProfile) {
       where: {
         OR: [
           providerWhere(profile.provider, providerId),
+          ...(options.preferredUserId ? [{ id: options.preferredUserId }] : []),
           ...(email ? [{ email }] : []),
           ...(phone ? [{ phone }] : []),
         ],
@@ -149,25 +170,68 @@ export async function findOrCreateOAuthUser(profile: OAuthProfile) {
       })
     }
 
-    const primary = pickPrimary(users, profile, email, phone)
+    const primary = pickPrimary(users, profile, email, phone, options.preferredUserId)
     const duplicates = users.filter((user) => user.id !== primary.id)
+    const mergedData = pickMergedUserData(primary, duplicates, profile, email, phone)
 
     for (const duplicate of duplicates) {
       await mergeUserIntoPrimary(tx, primary.id, duplicate.id)
     }
 
-    const current = await tx.user.findUniqueOrThrow({ where: { id: primary.id } })
-
     return tx.user.update({
       where: { id: primary.id },
-      data: {
-        ...provider,
-        email: current.email || email,
-        phone: current.phone || phone,
-        name: current.name || name,
-        avatar: current.avatar || avatar,
-        city: current.city || city,
-      },
+      data: mergedData,
     })
+  })
+}
+
+export async function findOrCreatePhoneUser(phoneInput: string, options: SyncOptions = {}) {
+  const phone = cleanPhone(phoneInput)
+  if (!phone) throw new Error("invalid_phone")
+
+  return prisma.$transaction(async (tx) => {
+    const users = await tx.user.findMany({
+      where: {
+        OR: [
+          { phone },
+          ...(options.preferredUserId ? [{ id: options.preferredUserId }] : []),
+        ],
+      },
+      orderBy: { createdAt: "asc" },
+    })
+
+    if (!users.length) {
+      const user = await tx.user.create({
+        data: {
+          phone,
+          isVerified: true,
+        },
+      })
+      return { user, isNew: true }
+    }
+
+    const primary = users.find((user) => options.preferredUserId && user.id === options.preferredUserId) || users[0]
+    const duplicates = users.filter((user) => user.id !== primary.id)
+    const mergedData = {
+      vkId: primary.vkId || duplicates.find((user) => user.vkId)?.vkId || null,
+      yandexId: primary.yandexId || duplicates.find((user) => user.yandexId)?.yandexId || null,
+      email: primary.email || duplicates.find((user) => user.email)?.email || null,
+      phone,
+      name: primary.name || duplicates.find((user) => user.name)?.name || null,
+      avatar: primary.avatar || duplicates.find((user) => user.avatar)?.avatar || null,
+      city: primary.city || duplicates.find((user) => user.city)?.city || null,
+      isVerified: true,
+    }
+
+    for (const duplicate of duplicates) {
+      await mergeUserIntoPrimary(tx, primary.id, duplicate.id)
+    }
+
+    const user = await tx.user.update({
+      where: { id: primary.id },
+      data: mergedData,
+    })
+
+    return { user, isNew: false }
   })
 }

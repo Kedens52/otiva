@@ -38,6 +38,9 @@ export async function PATCH(request: NextRequest) {
       select: {
         id: true,
         phone: true,
+        email: true,
+        vkId: true,
+        yandexId: true,
         name: true,
         avatar: true,
         description: true,
@@ -50,7 +53,16 @@ export async function PATCH(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({ user: updated })
+    return NextResponse.json({
+      user: {
+        ...updated,
+        authProviders: {
+          phone: Boolean(updated.phone),
+          vk: Boolean(updated.vkId),
+          yandex: Boolean(updated.yandexId),
+        },
+      },
+    })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors[0].message }, { status: 400 })

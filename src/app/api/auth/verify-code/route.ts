@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { signToken, setAuthCookie, formatPhone } from '@/lib/auth'
-import { z } from 'zod'
+import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
+import { getSession, signToken, setAuthCookie, formatPhone } from "@/lib/auth"
+import { findOrCreatePhoneUser } from "@/lib/oauth-users"
+import { z } from "zod"
 
 const schema = z.object({
   phone: z.string().min(10).max(15),
@@ -21,71 +22,60 @@ export async function POST(request: NextRequest) {
         used: false,
         expiresAt: { gt: new Date() },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     })
 
     if (!otpRecord) {
       return NextResponse.json(
-        { error: 'Неверный или истёкший код' },
-        { status: 400 }
+        { error: "Неверный или истекший код" },
+        { status: 400 },
       )
     }
 
-    // Mark code as used
     await prisma.otpCode.update({
       where: { id: otpRecord.id },
       data: { used: true },
     })
 
-    // Find or create user
-    let isNew = false
-    let user = await prisma.user.findUnique({
-      where: { phone: normalizedPhone },
+    const session = await getSession()
+    const { user, isNew } = await findOrCreatePhoneUser(normalizedPhone, {
+      preferredUserId: session?.userId,
     })
 
-    if (!user) {
-      isNew = true
-      user = await prisma.user.create({
-        data: {
-          phone: normalizedPhone,
-          isVerified: true,
-        },
-      })
-    } else if (!user.isVerified) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { isVerified: true },
-      })
-    }
-
     if (user.isBanned) {
-      return NextResponse.json({ error: 'Аккаунт заблокирован' }, { status: 403 })
+      return NextResponse.json({ error: "Аккаунт заблокирован" }, { status: 403 })
     }
 
     const token = await signToken({
       userId: user.id,
-      phone: user.phone || '',
+      phone: user.phone || "",
       role: user.role,
     })
 
     setAuthCookie(token)
 
     return NextResponse.json({
-      message: 'Успешная авторизация',
+      message: "Успешная авторизация",
       isNew,
       user: {
         id: user.id,
         phone: user.phone,
+        email: user.email,
         name: user.name,
         avatar: user.avatar,
         role: user.role,
+        authProviders: {
+          phone: Boolean(user.phone),
+          vk: Boolean(user.vkId),
+          yandex: Boolean(user.yandexId),
+        },
       },
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Неверные данные' }, { status: 400 })
+      return NextResponse.json({ error: "Неверные данные" }, { status: 400 })
     }
-    console.error('verify-code error:', error)
-    return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
+    console.error("verify-code error:", error)
+    return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 })
   }
 }
