@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { formatPhone } from "@/lib/auth"
 import type { Prisma, User } from "@prisma/client"
 
 type OAuthProvider = "vk" | "yandex"
@@ -18,6 +19,13 @@ type Tx = Prisma.TransactionClient
 function clean(value?: string | null) {
   const next = value?.trim()
   return next || null
+}
+
+function cleanPhone(value?: string | null) {
+  const phone = clean(value)
+  if (!phone) return null
+  const digits = phone.replace(/\D/g, "")
+  return digits.length >= 10 ? formatPhone(phone) : null
 }
 
 function providerWhere(provider: OAuthProvider, providerId: string): Prisma.UserWhereInput {
@@ -109,7 +117,7 @@ async function mergeUserIntoPrimary(tx: Tx, primaryId: string, duplicateId: stri
 export async function findOrCreateOAuthUser(profile: OAuthProfile) {
   const providerId = profile.providerId
   const email = clean(profile.email)?.toLowerCase() ?? null
-  const phone = clean(profile.phone)
+  const phone = cleanPhone(profile.phone)
   const name = clean(profile.name)
   const avatar = clean(profile.avatar)
   const city = clean(profile.city)
