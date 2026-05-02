@@ -3,16 +3,10 @@
 import { useEffect, useState } from "react"
 
 type Analytics = {
-  users: { total: number; newLast30Days: number }
-  listings: { total: number; active: number; pendingModeration: number; sold: number }
+  users: { total: number; newLast30Days: number; newLast7Days: number; newToday: number }
+  listings: { total: number; active: number; pendingModeration: number; sold: number; newToday: number; newLast7Days: number }
   byCategory: { category: string; count: number }[]
   byCity: { city: string; count: number }[]
-}
-
-const ACTION_COLOR: Record<string, string> = {
-  "Одобрено":  "bg-[hsl(var(--nashlo-mint)/0.15)] text-[hsl(var(--nashlo-mint))]",
-  "Отклонено": "bg-red-50 text-red-600",
-  "Бан":       "bg-zinc-950 text-white",
 }
 
 function fmt(n: number) {
@@ -71,6 +65,11 @@ export default function AdminAnalyticsPage() {
     },
   ]
 
+  const todayStats = [
+    { label: "Новых пользователей сегодня", value: data.users.newToday,      sub: `за 7 дней: +${fmt(data.users.newLast7Days)}` },
+    { label: "Новых объявлений сегодня",    value: data.listings.newToday,   sub: `за 7 дней: +${fmt(data.listings.newLast7Days)}` },
+  ]
+
   const totalCat = data.byCategory.reduce((s, r) => s + r.count, 0) || 1
 
   return (
@@ -90,8 +89,19 @@ export default function AdminAnalyticsPage() {
         ))}
       </section>
 
+      <section className="mt-4 grid gap-4 sm:grid-cols-2">
+        {todayStats.map((s) => (
+          <div key={s.label} className="flex items-center justify-between rounded-[20px] border border-zinc-200 bg-white px-5 py-4 shadow-sm">
+            <div>
+              <p className="text-sm font-medium text-zinc-600">{s.label}</p>
+              <p className="mt-0.5 text-xs text-zinc-400">{s.sub}</p>
+            </div>
+            <p className="text-3xl font-semibold text-zinc-950">+{fmt(s.value)}</p>
+          </div>
+        ))}
+      </section>
+
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        {/* By category */}
         <section className="rounded-[24px] border border-zinc-200 bg-white p-6">
           <h2 className="text-base font-semibold text-zinc-950">По категориям</h2>
           {data.byCategory.length === 0 ? (
@@ -116,7 +126,6 @@ export default function AdminAnalyticsPage() {
           )}
         </section>
 
-        {/* By city */}
         <section className="rounded-[24px] border border-zinc-200 bg-white p-6">
           <h2 className="text-base font-semibold text-zinc-950">По городам</h2>
           {data.byCity.length === 0 ? (

@@ -39,6 +39,21 @@ const CITY_FIELD: FilterField = {
 // ── Category-specific filter configs ─────────────────────────────────────────
 
 export const CATEGORY_FILTERS: Record<string, CategoryFilterConfig> = {
+  free: {
+    label: "Бесплатно / Отдам даром",
+    fields: [
+      CITY_FIELD,
+      CONDITION_FIELD,
+      {
+        type: "select", key: "free_type", label: "Формат",
+        options: [
+          { value: "pickup", label: "Самовывоз" },
+          { value: "delivery", label: "Могу передать" },
+          { value: "exchange", label: "Можно обмен" },
+        ],
+      },
+    ],
+  },
 
   // ── Транспорт ──────────────────────────────────────────────────────────────
   cars: {

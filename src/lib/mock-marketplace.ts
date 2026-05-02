@@ -1,4 +1,5 @@
 ﻿export type ListingCategory =
+  | "free"
   | "cars"
   | "real-estate"
   | "services"
@@ -37,6 +38,14 @@ export const marketplaceCategories: Array<{
   count: string
   tone: string
 }> = [
+  {
+    slug: "free",
+    href: "/free",
+    title: "Бесплатно",
+    caption: "Вещи, которые отдают даром или за самовывоз",
+    count: "32 объявления",
+    tone: "from-[hsl(var(--nashlo-orange))] to-amber-300",
+  },
   {
     slug: "cars",
     href: "/cars",

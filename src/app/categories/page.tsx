@@ -12,6 +12,26 @@ type Category = {
 
 const ALL_CATEGORIES: Category[] = [
   {
+    slug: "free", title: "Бесплатно / Отдам даром", emoji: "🎁",
+    description: "Вещи, которые можно забрать бесплатно или за самовывоз",
+    color: "bg-[hsl(var(--nashlo-orange)/0.12)]", textColor: "text-[hsl(var(--nashlo-orange))]",
+    href: "/search?cat=free",
+    groups: [
+      { title: "Отдают бесплатно", href: "/search?cat=free", items: [
+        { label: "Все бесплатные объявления", href: "/search?cat=free" },
+        { label: "Самовывоз", href: "/search?cat=free&free_type=pickup" },
+        { label: "Могут передать", href: "/search?cat=free&free_type=delivery" },
+        { label: "Можно обмен", href: "/search?cat=free&free_type=exchange" },
+      ]},
+      { title: "Популярное", href: "/search?cat=free", items: [
+        { label: "Мебель", href: "/search?cat=free&q=мебель" },
+        { label: "Детские вещи", href: "/search?cat=free&q=детские" },
+        { label: "Книги", href: "/search?cat=free&q=книги" },
+        { label: "Техника", href: "/search?cat=free&q=техника" },
+      ]},
+    ],
+  },
+  {
     slug: "cars", title: "Транспорт", emoji: "🚗",
     description: "Автомобили, мотоциклы, спецтехника, запчасти",
     color: "bg-[hsl(var(--nashlo-mint)/0.12)]", textColor: "text-[hsl(var(--nashlo-mint))]",

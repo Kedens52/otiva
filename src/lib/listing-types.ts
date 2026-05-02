@@ -34,6 +34,7 @@ export type CategoryMeta = {
 }
 
 export const CATEGORY_META: CategoryMeta[] = [
+  { slug: "free",        title: "Бесплатно / Отдам даром", href: "/search?cat=free" },
   { slug: "cars",        title: "Транспорт",       href: "/search?cat=cars" },
   { slug: "real-estate", title: "Недвижимость",    href: "/search?cat=real-estate" },
   { slug: "electronics", title: "Электроника",     href: "/search?cat=electronics" },
@@ -64,6 +65,7 @@ export function formatPrice(price: number): string {
 }
 
 const CATEGORY_TONES: Record<string, string> = {
+  free:         "from-orange-400 to-amber-300",
   cars:         "from-emerald-400 to-teal-300",
   "real-estate":"from-blue-400 to-indigo-300",
   electronics:  "from-violet-400 to-purple-300",

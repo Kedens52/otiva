@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 // ── Category definitions with their specific fields ──────────────────────────
 
 const CATEGORIES = [
+  { id: "free",         label: "Бесплатно",          icon: "🎁" },
   { id: "cars",         label: "Транспорт",        icon: "🚗" },
   { id: "real-estate",  label: "Недвижимость",      icon: "🏠" },
   { id: "electronics",  label: "Электроника",       icon: "📱" },
@@ -46,6 +47,16 @@ const CARS_MODELS: Record<string, string[]> = {
 }
 
 const CATEGORY_EXTRA_FIELDS: Record<string, FieldDef[]> = {
+  free: [
+    {
+      type: "select", key: "free_type", label: "Что отдаете", required: true,
+      options: [
+        { value: "pickup", label: "Самовывоз" },
+        { value: "delivery", label: "Могу передать" },
+        { value: "exchange", label: "Можно обмен" },
+      ],
+    },
+  ],
 
   // ── Транспорт ──────────────────────────────────────────────────────────────
   "cars": [
@@ -791,7 +802,11 @@ export default function CreatePage() {
               <button
                 key={c.id}
                 type="button"
-                onClick={() => { setCategory(c.id); setExtraFields({}) }}
+                onClick={() => {
+                  setCategory(c.id)
+                  setExtraFields({})
+                  if (c.id === "free") setForm((current) => ({ ...current, free: true, price: "" }))
+                }}
                 className={`flex flex-col items-center gap-1.5 rounded-2xl border-2 px-2 py-3 text-center text-xs font-medium transition ${
                   category === c.id
                     ? "border-[hsl(var(--nashlo-orange))] bg-[hsl(var(--nashlo-orange)/0.06)] text-zinc-950"

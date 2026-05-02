@@ -103,12 +103,12 @@ export default function AdminUsersPage() {
           <div className="py-12 text-center text-sm text-zinc-400">Пользователей не найдено</div>
         ) : (
           <>
-            <div className="hidden grid-cols-[minmax(0,2fr)_1fr_0.7fr_0.7fr_auto] gap-4 border-b border-zinc-100 bg-zinc-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-400 lg:grid">
+            <div className="hidden grid-cols-[minmax(0,2fr)_1.2fr_1fr_0.7fr_0.7fr_auto] gap-4 border-b border-zinc-100 bg-zinc-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-400 lg:grid">
               <span>Пользователь</span><span>Телефон</span><span>Объявления</span><span>Рейтинг</span><span>Действия</span>
             </div>
             <div className="divide-y divide-zinc-100">
               {users.map((user) => (
-                <div key={user.id} className="grid gap-3 px-5 py-4 lg:grid-cols-[minmax(0,2fr)_1fr_0.7fr_0.7fr_auto] lg:items-center">
+                <div key={user.id} className="grid gap-3 px-5 py-4 lg:grid-cols-[minmax(0,2fr)_1.2fr_1fr_0.7fr_0.7fr_auto] lg:items-center">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--nashlo-orange)/0.15)] text-sm font-semibold text-[hsl(var(--nashlo-orange))]">
                       {(user.name ?? user.phone)[0].toUpperCase()}
@@ -118,6 +118,12 @@ export default function AdminUsersPage() {
                       <p className="truncate text-xs text-zinc-500">{user.city ?? "—"} · с {new Date(user.createdAt).toLocaleDateString("ru-RU")}</p>
                     </div>
                     {user.isBanned && <span className="ml-1 shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-600">Бан</span>}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-mono text-xs text-zinc-500">{user.id}</p>
+                    <a href={`/profile/${user.id}`} target="_blank" className="text-xs font-semibold text-[hsl(var(--nashlo-blue))] hover:underline">
+                      Открыть профиль
+                    </a>
                   </div>
                   <p className="text-sm text-zinc-600">{user.phone}</p>
                   <p className="text-sm font-semibold text-zinc-950">{user._count.listings}</p>

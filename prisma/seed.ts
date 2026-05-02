@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 const categories = [
+  { name: 'Free',         nameRu: 'Бесплатно / Отдам даром', slug: 'free',        icon: '🎁', description: 'Вещи, которые отдают бесплатно или за самовывоз' },
   { name: 'Transport',    nameRu: 'Транспорт',        slug: 'cars',        icon: '🚗', description: 'Автомобили, мотоциклы, запчасти' },
   { name: 'Realty',       nameRu: 'Недвижимость',      slug: 'real-estate', icon: '🏠', description: 'Квартиры, дома, земля' },
   { name: 'Electronics',  nameRu: 'Электроника',       slug: 'electronics', icon: '📱', description: 'Телефоны, компьютеры, техника' },

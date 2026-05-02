@@ -22,24 +22,34 @@ export async function GET() {
 
   try {
     const now = new Date()
-    const last30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    const last30     = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    const last7      = new Date(now.getTime() -  7 * 24 * 60 * 60 * 1000)
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
     const [
       totalUsers,
       newUsers30,
+      newUsers7,
+      newUsersToday,
       totalListings,
       activeListings,
       moderationListings,
       soldListings,
+      newListingsToday,
+      newListings7,
       byCategory,
       byCity,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { createdAt: { gte: last30 } } }),
+      prisma.user.count({ where: { createdAt: { gte: last7 } } }),
+      prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
       prisma.listing.count(),
       prisma.listing.count({ where: { status: "ACTIVE" } }),
       prisma.listing.count({ where: { status: "MODERATION" } }),
       prisma.listing.count({ where: { status: "SOLD" } }),
+      prisma.listing.count({ where: { createdAt: { gte: todayStart } } }),
+      prisma.listing.count({ where: { createdAt: { gte: last7 } } }),
       prisma.listing.groupBy({
         by: ["categoryId"],
         _count: { id: true },
@@ -64,12 +74,14 @@ export async function GET() {
     const catMap = Object.fromEntries(categories.map((c) => [c.id, c.nameRu]))
 
     return NextResponse.json({
-      users: { total: totalUsers, newLast30Days: newUsers30 },
+      users: { total: totalUsers, newLast30Days: newUsers30, newLast7Days: newUsers7, newToday: newUsersToday },
       listings: {
         total: totalListings,
         active: activeListings,
         pendingModeration: moderationListings,
         sold: soldListings,
+        newToday: newListingsToday,
+        newLast7Days: newListings7,
       },
       byCategory: byCategory.map((r) => ({
         category: catMap[r.categoryId ?? ""] ?? "Другое",

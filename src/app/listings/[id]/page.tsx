@@ -7,6 +7,7 @@ import { formatPrice, imageToneForCategory, categorySlug } from "@/lib/listing-t
 import { ContactSellerModal } from "@/components/marketplace/ContactSellerModal"
 import { ReportModal } from "@/components/marketplace/ReportModal"
 import { YandexMap } from "@/components/YandexMap"
+import { ListingCard } from "@/components/marketplace/ListingCard"
 import type { AppListing } from "@/lib/listing-types"
 import { trackListingInterest } from "@/lib/recommendations"
 
@@ -42,6 +43,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
   const [isFav, setIsFav] = useState(false)
   const [shared, setShared] = useState(false)
   const [markingSold, setMarkingSold] = useState(false)
+  const [similar, setSimilar] = useState<AppListing[]>([])
 
   useEffect(() => {
     fetch(`/api/listings/${params.id}`)
@@ -49,7 +51,19 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
       .then((data) => {
         const nextListing = data?.listing ?? null
         setListing(nextListing)
-        if (nextListing) trackListingInterest(nextListing, 5)
+        if (nextListing) {
+          trackListingInterest(nextListing, 5)
+          const slug = categorySlug(nextListing)
+          if (slug) {
+            fetch(`/api/listings?category=${slug}&pageSize=7`)
+              .then((r) => r.ok ? r.json() : null)
+              .then((d) => {
+                const items: AppListing[] = d?.items ?? []
+                setSimilar(items.filter((l) => l.id !== params.id).slice(0, 6))
+              })
+              .catch(() => {})
+          }
+        }
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -179,7 +193,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
               {[1,2,3,4,5].map((s) => (
                 <button key={s} type="button" onClick={() => setReviewRating(s)}
                   className={"text-2xl transition " + (s <= reviewRating ? "text-amber-400" : "text-zinc-200")}>
-                  ★
+                  &#9733;
                 </button>
               ))}
             </div>
@@ -237,7 +251,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
             )}
             <button onClick={toggleFav} aria-label="Избранное"
               className={"absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-2xl border shadow-sm backdrop-blur-sm transition " + (isFav ? "border-red-200 bg-red-50 text-red-500" : "border-white/30 bg-white/80 text-zinc-500 hover:text-red-400")}>
-              {isFav ? "♥" : "♡"}
+              {isFav ? "&#9829;" : "&#9825;"}
             </button>
             {listing.status === "SOLD" && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50">
@@ -316,13 +330,13 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                 <div>
                   <p className="font-semibold text-zinc-950">{listing.seller.name ?? "Продавец"}</p>
                   {(listing.seller.rating ?? 0) > 0 && (
-                    <p className="mt-0.5 text-sm text-zinc-500">★ {listing.seller.rating!.toFixed(1)} · {listing.seller.reviewCount} отз.</p>
+                    <p className="mt-0.5 text-sm text-zinc-500">&#9733; {listing.seller.rating!.toFixed(1)} &#183; {listing.seller.reviewCount} отз.</p>
                   )}
                 </div>
               </Link>
               {listing.seller.isVerified && (
                 <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-                  ✓ Проверенный продавец
+                  &#10003; Проверенный продавец
                 </p>
               )}
             </div>
@@ -342,7 +356,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
               )}
               {listing.status === "SOLD" && (
                 <div className="flex items-center justify-center rounded-full bg-blue-50 px-5 py-3 text-sm font-semibold text-blue-700">
-                  ✓ Продано
+                  &#10003; Продано
                 </div>
               )}
               <button onClick={shareListing}
@@ -370,7 +384,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                   Оставить отзыв
                 </button>
               )}
-              {reviewSent && <p className="text-center text-sm text-emerald-600">Отзыв отправлен ✓</p>}
+              {reviewSent && <p className="text-center text-sm text-emerald-600">Отзыв отправлен &#10003;</p>}
               <button onClick={() => setReportOpen(true)}
                 className="rounded-full py-2 text-xs font-medium text-zinc-400 transition hover:text-zinc-600">
                 Пожаловаться
@@ -379,6 +393,21 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
           )}
         </aside>
       </div>
+
+      {similar.length > 0 && (
+        <section className="mt-12">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">Похожие объявления</h2>
+            <Link href={`/search?category=${slug}`}
+              className="text-sm font-semibold text-zinc-500 hover:text-zinc-950">
+              Все в категории &#8594;
+            </Link>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-3">
+            {similar.map((l) => <ListingCard key={l.id} listing={l} compact />)}
+          </div>
+        </section>
+      )}
     </main>
   )
 }

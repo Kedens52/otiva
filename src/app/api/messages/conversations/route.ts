@@ -12,6 +12,7 @@ export async function GET() {
 
     const conversations = await prisma.conversation.findMany({
       where: {
+        isSupport: false,
         members: { some: { userId: user.id } },
       },
       include: {

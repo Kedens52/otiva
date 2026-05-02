@@ -94,6 +94,14 @@ export default function ChatPage() {
         </header>
 
         <section className="flex-1 overflow-y-auto px-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 lg:px-0">
+          <Link href="/support" className="mb-3 flex items-center gap-3 rounded-[24px] border border-orange-100 bg-orange-50 px-4 py-4 transition hover:bg-orange-100">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-[hsl(var(--nashlo-orange))] text-lg font-bold text-white">?</div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-zinc-950">Поддержка Нашло</p>
+              <p className="mt-0.5 truncate text-sm text-zinc-500">Вопросы по объявлениям, оплате и безопасности</p>
+            </div>
+            <span className="text-xl text-[hsl(var(--nashlo-orange))]">›</span>
+          </Link>
           {loading ? (
             <div className="space-y-2">
               {[1,2,3].map((i) => <div key={i} className="h-20 rounded-2xl bg-zinc-100 animate-pulse" />)}

@@ -32,10 +32,11 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 export default function AdminListingsPage() {
-  const [items, setItems]     = useState<ListingItem[]>([])
-  const [total, setTotal]     = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [status, setStatus]   = useState("MODERATION")
+  const [items, setItems]       = useState<ListingItem[]>([])
+  const [total, setTotal]       = useState(0)
+  const [loading, setLoading]   = useState(true)
+  const [status, setStatus]     = useState("MODERATION")
+  const [approving, setApproving] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -62,6 +63,21 @@ export default function AdminListingsPage() {
     if (res.ok) setItems((prev) => prev.filter((l) => l.id !== listingId))
   }
 
+  async function approveAll() {
+    if (!items.length) return
+    setApproving(true)
+    for (const item of items) {
+      await fetch("/api/admin/listings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId: item.id, action: "APPROVED" }),
+      })
+    }
+    setItems([])
+    setTotal(0)
+    setApproving(false)
+  }
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -69,9 +85,20 @@ export default function AdminListingsPage() {
           <h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Объявления</h1>
           <p className="mt-2 text-zinc-500">Управление объявлениями. Всего: {total}</p>
         </div>
-        <Link href="/admin/moderation" className="rounded-2xl bg-[hsl(var(--nashlo-orange))] px-5 py-3 text-sm font-semibold text-white shadow-sm">
-          Панель модерации
-        </Link>
+        <div className="flex items-center gap-3">
+          {status === "MODERATION" && items.length > 1 && (
+            <button
+              onClick={approveAll}
+              disabled={approving}
+              className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {approving ? "Одобряем..." : `Одобрить все (${items.length})`}
+            </button>
+          )}
+          <Link href="/admin/moderation" className="rounded-2xl bg-[hsl(var(--nashlo-orange))] px-5 py-3 text-sm font-semibold text-white shadow-sm">
+            Панель модерации
+          </Link>
+        </div>
       </div>
 
       <div className="mt-6 flex gap-2 overflow-x-auto pb-1">
@@ -79,6 +106,11 @@ export default function AdminListingsPage() {
           <button key={key} onClick={() => setStatus(key)}
             className={`shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition ${status === key ? "bg-zinc-950 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"}`}>
             {label}
+            {status === key && !loading && (
+              <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${status === key ? "bg-white/20" : "bg-zinc-200"}`}>
+                {items.length}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -102,7 +134,7 @@ export default function AdminListingsPage() {
                 </span>
                 <Link href={`/listings/${item.id}`} target="_blank"
                   className="rounded-xl border border-zinc-200 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50">
-                  Открыть ↗
+                  Открыть &#8599;
                 </Link>
                 {status === "MODERATION" && (
                   <div className="flex gap-2">

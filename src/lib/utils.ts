@@ -84,6 +84,7 @@ export const CITIES = [
 ]
 
 export const CATEGORIES = [
+  { slug: 'free', name: 'Free', nameRu: 'Бесплатно / Отдам даром', icon: '🎁' },
   { slug: 'electronics', name: 'Electronics', nameRu: 'Электроника', icon: '💻' },
   { slug: 'cars', name: 'Cars', nameRu: 'Автомобили', icon: '🚗' },
   { slug: 'realestate', name: 'Real Estate', nameRu: 'Недвижимость', icon: '🏠' },

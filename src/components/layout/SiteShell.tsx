@@ -9,7 +9,7 @@ import { MobileAdBanner } from "@/components/marketplace/MobileAdBanner"
 export function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isAdmin = pathname.startsWith("/admin")
-  const isChatApp = pathname === "/chat" || pathname.startsWith("/messages/")
+  const isChatApp = pathname === "/chat" || pathname.startsWith("/messages/") || pathname === "/support"
 
   if (isAdmin) {
     return <>{children}</>

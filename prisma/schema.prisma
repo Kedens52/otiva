@@ -137,6 +137,7 @@ model Conversation {
   id        String   @id @default(cuid())
   listingId String?
   listing   Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  isSupport Boolean  @default(false)
 
   members   ConversationMember[]
   messages  Message[]
@@ -145,6 +146,7 @@ model Conversation {
   updatedAt DateTime @updatedAt
 
   @@index([listingId])
+  @@index([isSupport])
 }
 
 model ConversationMember {
