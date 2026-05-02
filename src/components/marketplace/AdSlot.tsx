@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getActiveAd, type AdSlotId, type ManagedAd } from "@/lib/ad-store"
+import { getActiveAd, getTrackedAdHref, trackAdClick, trackAdImpression, type AdSlotId, type ManagedAd } from "@/lib/ad-store"
 
 type AdSlotProps = {
   slot: AdSlotId
@@ -78,10 +78,38 @@ export function AdSlot({ slot, variant, tone = "orange" }: AdSlotProps) {
     }
   }, [slot])
 
+  useEffect(() => {
+    if (!ad?.id) return
+    trackAdImpression(ad.id)
+  }, [ad?.id])
+
+  const href = ad ? getTrackedAdHref(ad) : data.href
+
+  function handleClick() {
+    if (ad?.id) trackAdClick(ad.id)
+  }
+
+  if (isManaged && ad?.image) {
+    const sizeClass = variant === "leaderboard" ? "h-[96px]" : variant === "tall" ? "h-[300px]" : "h-[250px]"
+
+    return (
+      <a
+        href={href}
+        onClick={handleClick}
+        className={`group block w-full overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition hover:shadow-md ${sizeClass}`}
+        title={data.title}
+        aria-label={data.title}
+      >
+        <img src={ad.image} alt={data.title} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
+      </a>
+    )
+  }
+
   if (variant === "leaderboard") {
     return (
       <a
-        href={data.href}
+        href={href}
+        onClick={handleClick}
         className={`group relative flex min-h-[96px] w-full items-center justify-between overflow-hidden rounded-3xl border px-8 shadow-sm transition hover:shadow-md ${styles.border} ${styles.bg}`}
         title={data.title}
       >
@@ -109,7 +137,8 @@ export function AdSlot({ slot, variant, tone = "orange" }: AdSlotProps) {
 
   return (
     <a
-      href={data.href}
+      href={href}
+      onClick={handleClick}
       className={`group relative flex w-full flex-col items-center justify-center overflow-hidden rounded-3xl border px-5 text-center shadow-sm transition hover:shadow-md ${variant === "tall" ? "h-[300px]" : "h-[250px]"} ${styles.border} ${styles.bg}`}
       title={data.title}
     >
@@ -121,7 +150,7 @@ export function AdSlot({ slot, variant, tone = "orange" }: AdSlotProps) {
       <p className={`mt-3 text-sm font-semibold uppercase tracking-[0.12em] ${styles.label}`}>{data.advertiser}</p>
       <p className="mt-2 text-lg font-semibold leading-6 text-zinc-950">{data.title}</p>
       <p className="mt-2 line-clamp-3 text-sm leading-5 text-zinc-500">{data.subtitle}</p>
-      <span className={`mt-5 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition group-hover:scale-[1.02] ${styles.button}`}>
+      <span className={`mt-5 mb-5 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition group-hover:scale-[1.02] ${styles.button}`}>
         {data.cta} →
       </span>
       <span className={`absolute bottom-3 right-4 text-[10px] font-medium ${styles.hint}`}>

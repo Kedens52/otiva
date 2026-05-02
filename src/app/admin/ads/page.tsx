@@ -31,6 +31,11 @@ export default function AdminAdsPage() {
     ])) as Record<AdSlotId, number>
   }, [ads])
 
+  const totals = useMemo(() => ({
+    impressions: ads.reduce((sum, ad) => sum + (ad.impressions || 0), 0),
+    clicks: ads.reduce((sum, ad) => sum + (ad.clicks || 0), 0),
+  }), [ads])
+
   function persist(next: ManagedAd[]) {
     setAds(next)
     saveManagedAds(next)
@@ -62,8 +67,12 @@ export default function AdminAdsPage() {
       }
     }
 
+    const normalizedDraft = {
+      ...draft,
+      status: draft.active ? "approved" as const : draft.status || "draft" as const,
+    }
     const exists = ads.some((ad) => ad.id === draft.id)
-    const next = exists ? ads.map((ad) => ad.id === draft.id ? draft : ad) : [draft, ...ads]
+    const next = exists ? ads.map((ad) => ad.id === draft.id ? normalizedDraft : ad) : [normalizedDraft, ...ads]
     persist(next)
     setDraft(createDefaultAd(draft.slot))
     setMessage("Сохранено. Активная реклама сразу появится на главной.")
@@ -84,7 +93,23 @@ export default function AdminAdsPage() {
       }
     }
 
-    persist(ads.map((item) => item.id === ad.id ? { ...item, active: !item.active } : item))
+    persist(ads.map((item) => item.id === ad.id ? { ...item, active: !item.active, status: !item.active ? "approved" : "draft" } : item))
+  }
+
+  function approveAd(ad: ManagedAd) {
+    const hasActiveInSlot = ads.some((item) => item.id !== ad.id && item.slot === ad.slot && item.active)
+    if (hasActiveInSlot) {
+      setMessage("В этом слоте уже есть активная реклама. Сначала выключите старую.")
+      return
+    }
+
+    persist(ads.map((item) => item.id === ad.id ? { ...item, status: "approved", active: true, moderationComment: "" } : item))
+    setMessage("Реклама одобрена и включена.")
+  }
+
+  function rejectAd(ad: ManagedAd) {
+    persist(ads.map((item) => item.id === ad.id ? { ...item, status: "rejected", active: false, moderationComment: "Нужны правки креатива или данных. Исправьте материалы и отправьте повторно." } : item))
+    setMessage("Реклама отклонена. Комментарий появится в кабинете рекламодателя.")
   }
 
   function deleteAd(id: string) {
@@ -118,6 +143,21 @@ export default function AdminAdsPage() {
               <p className="text-xs text-zinc-400">{slot.size}</p>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <p className="text-xs text-zinc-400">Показы</p>
+          <p className="mt-1 text-2xl font-semibold text-zinc-950">{totals.impressions.toLocaleString("ru-RU")}</p>
+        </div>
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <p className="text-xs text-zinc-400">Переходы</p>
+          <p className="mt-1 text-2xl font-semibold text-zinc-950">{totals.clicks.toLocaleString("ru-RU")}</p>
+        </div>
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <p className="text-xs text-zinc-400">CTR</p>
+          <p className="mt-1 text-2xl font-semibold text-zinc-950">{totals.impressions ? ((totals.clicks / totals.impressions) * 100).toFixed(1) : "0"}%</p>
         </div>
       </div>
 
@@ -163,6 +203,10 @@ export default function AdminAdsPage() {
             <label className="block">
               <span className="text-sm font-medium text-zinc-600">Рекламодатель *</span>
               <input value={draft.advertiser} onChange={(event) => updateDraft("advertiser", event.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-[hsl(var(--nashlo-orange))]" />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium text-zinc-600">Email рекламодателя</span>
+              <input value={draft.ownerEmail || ""} onChange={(event) => updateDraft("ownerEmail", event.target.value)} placeholder="billing@example.ru" className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-[hsl(var(--nashlo-orange))]" />
             </label>
             <label className="block">
               <span className="text-sm font-medium text-zinc-600">Заголовок *</span>
@@ -238,17 +282,27 @@ export default function AdminAdsPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate font-semibold text-zinc-950">{ad.title}</p>
                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${ad.active ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}>
-                          {ad.active ? "Активна" : "Выключена"}
+                          {ad.active ? "Активна" : ad.status === "pending" ? "На модерации" : ad.status === "rejected" ? "Отклонена" : "Выключена"}
                         </span>
                       </div>
                       <p className="mt-1 text-sm text-zinc-500">{ad.advertiser} · {slot?.label} · {slot?.size}</p>
+                      {ad.ownerEmail && <p className="mt-1 text-xs text-zinc-400">Кабинет: {ad.ownerEmail}</p>}
                       <p className="mt-1 line-clamp-2 text-sm text-zinc-400">{ad.subtitle}</p>
                       <p className="mt-1 text-xs text-zinc-300">{ad.startsAt} — {ad.endsAt} · {ad.erid}</p>
+                      <p className="mt-1 text-xs text-zinc-400">Показы: {(ad.impressions || 0).toLocaleString("ru-RU")} · Переходы: {(ad.clicks || 0).toLocaleString("ru-RU")}</p>
                     </div>
                     <div className="grid gap-2">
                       <button onClick={() => editAd(ad)} className="rounded-xl bg-zinc-950 px-3 py-2 text-xs font-semibold text-white">
                         Редактировать
                       </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => approveAd(ad)} className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+                          Одобрить
+                        </button>
+                        <button onClick={() => rejectAd(ad)} className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+                          Отклонить
+                        </button>
+                      </div>
                       <div className="grid grid-cols-2 gap-2">
                         <button onClick={() => toggleAd(ad)} className="rounded-xl bg-zinc-100 px-3 py-2 text-xs font-semibold text-zinc-700">
                           {ad.active ? "Выключить" : "Включить"}

@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { createMiddlewareSupabase } from "@/lib/supabase-server"
+import { jwtVerify } from "jose"
 
-const ADMIN_COOKIE = "nashlo_admin_session"
-const PROTECTED = ["/my-listings", "/favorites", "/chat", "/messages", "/create", "/profile/settings"]
-const AUTH_ONLY = ["/login", "/register"]
-const ADMIN_ROUTES = ["/admin"]
-const ADMIN_PUBLIC = ["/admin/login"]
+const ADMIN_COOKIE  = "nashlo_admin_session"
+const AUTH_COOKIE   = "nashlo_token"
+const PROTECTED     = ["/my-listings", "/favorites", "/chat", "/messages", "/create", "/profile/settings"]
+const ADMIN_ROUTES  = ["/admin"]
+const ADMIN_PUBLIC  = ["/admin/login"]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const response = NextResponse.next({ request })
 
+  // ── Admin routes ─────────────────────────────────────────────────────────
   const ADMIN_TOKEN =
     process.env.NASHLO_ADMIN_TOKEN ||
     (process.env.NODE_ENV === "production" ? "" : "nashlo-local-developer")
@@ -29,21 +30,25 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  // ── User auth for protected pages ────────────────────────────────────────
+  if (PROTECTED.some((r) => pathname.startsWith(r))) {
+    const token = request.cookies.get(AUTH_COOKIE)?.value
 
-  if (supabaseUrl && supabaseKey) {
-    const supabase = createMiddlewareSupabase(request, response)
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (AUTH_ONLY.some((r) => pathname.startsWith(r))) {
-      if (user) return NextResponse.redirect(new URL("/", request.url))
-      return response
+    let authenticated = false
+    if (token) {
+      try {
+        const secret = new TextEncoder().encode(
+          process.env.JWT_SECRET || "fallback-secret-change-in-production"
+        )
+        await jwtVerify(token, secret)
+        authenticated = true
+      } catch {}
     }
 
-    if (PROTECTED.some((r) => pathname.startsWith(r))) {
-      if (!user)
-        return NextResponse.redirect(new URL(`/login?from=${encodeURIComponent(pathname)}`, request.url))
+    if (!authenticated) {
+      return NextResponse.redirect(
+        new URL(`/login?from=${encodeURIComponent(pathname)}`, request.url)
+      )
     }
   }
 

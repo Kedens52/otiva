@@ -1,11 +1,10 @@
-﻿"use client"
-
-import { totalUnread, seedConversations } from "@/lib/chat-store"
+"use client"
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Logo } from "@/components/layout/Logo"
+import { LoginModal } from "@/components/auth/LoginModal"
 
 type DemoUser = {
   name?: string
@@ -14,7 +13,7 @@ type DemoUser = {
 }
 
 const navItems = [
-  { href: "/profile/demo", label: "Мои объявления" },
+  { href: "/my-listings", label: "Мои объявления" },
   { href: "/favorites", label: "Избранное" },
   { href: "/chat", label: "Чат", badge: true },
 ]
@@ -40,7 +39,7 @@ type MenuCategory = { title: string; icon: string; href: string; accent: string;
 
 const categoryMenu: MenuCategory[] = [
   {
-    title: "Транспорт", icon: "▰", href: "/search?cat=cars",
+    title: "Транспорт", icon: "🚗", href: "/search?cat=cars",
     accent: "bg-[hsl(var(--nashlo-mint)/0.14)] text-[hsl(var(--nashlo-mint))]",
     groups: [
       { title: "Автомобили", href: "/search?cat=cars&vehicle_type=car", items: [
@@ -64,7 +63,7 @@ const categoryMenu: MenuCategory[] = [
     ],
   },
   {
-    title: "Недвижимость", icon: "▥", href: "/search?cat=real-estate",
+    title: "Недвижимость", icon: "🏠", href: "/search?cat=real-estate",
     accent: "bg-[hsl(var(--nashlo-blue)/0.13)] text-[hsl(var(--nashlo-blue))]",
     groups: [
       { title: "Купить", href: "/search?cat=real-estate&deal_type=sell", items: [
@@ -91,7 +90,7 @@ const categoryMenu: MenuCategory[] = [
     ],
   },
   {
-    title: "Услуги", icon: "◆", href: "/search?cat=services",
+    title: "Услуги", icon: "🔧", href: "/search?cat=services",
     accent: "bg-[hsl(var(--nashlo-orange)/0.14)] text-[hsl(var(--nashlo-orange))]",
     groups: [
       { title: "Для дома", href: "/search?cat=services&subcategory=repair_home", items: [
@@ -118,7 +117,7 @@ const categoryMenu: MenuCategory[] = [
     ],
   },
   {
-    title: "Электроника", icon: "◧", href: "/search?cat=electronics",
+    title: "Электроника", icon: "📱", href: "/search?cat=electronics",
     accent: "bg-[hsl(var(--nashlo-blue)/0.13)] text-[hsl(var(--nashlo-blue))]",
     groups: [
       { title: "Гаджеты", href: "/search?cat=electronics&subcategory=phones", items: [
@@ -145,7 +144,7 @@ const categoryMenu: MenuCategory[] = [
     ],
   },
   {
-    title: "Дом и интерьер", icon: "▤", href: "/search?cat=home",
+    title: "Дом и интерьер", icon: "🛋️", href: "/search?cat=home",
     accent: "bg-[hsl(var(--nashlo-orange)/0.14)] text-[hsl(var(--nashlo-orange))]",
     groups: [
       { title: "Мебель", href: "/search?cat=home&subcategory=furniture", items: [
@@ -171,7 +170,7 @@ const categoryMenu: MenuCategory[] = [
     ],
   },
   {
-    title: "Одежда", icon: "◒", href: "/search?cat=fashion",
+    title: "Одежда", icon: "👗", href: "/search?cat=fashion",
     accent: "bg-[hsl(var(--nashlo-orange)/0.14)] text-[hsl(var(--nashlo-orange))]",
     groups: [
       { title: "Женское", href: "/search?cat=fashion&gender=women", items: [
@@ -197,7 +196,7 @@ const categoryMenu: MenuCategory[] = [
     ],
   },
   {
-    title: "Детям", icon: "◌", href: "/search?cat=kids",
+    title: "Детям", icon: "🧸", href: "/search?cat=kids",
     accent: "bg-[hsl(var(--nashlo-mint)/0.14)] text-[hsl(var(--nashlo-mint))]",
     groups: [
       { title: "Товары", href: "/search?cat=kids&subcategory=toys", items: [
@@ -223,7 +222,7 @@ const categoryMenu: MenuCategory[] = [
     ],
   },
   {
-    title: "Спорт", icon: "●", href: "/search?cat=sport",
+    title: "Спорт", icon: "⚽", href: "/search?cat=sport",
     accent: "bg-[hsl(var(--nashlo-mint)/0.14)] text-[hsl(var(--nashlo-mint))]",
     groups: [
       { title: "Инвентарь", href: "/search?cat=sport&subcategory=bikes", items: [
@@ -247,12 +246,61 @@ const categoryMenu: MenuCategory[] = [
       ]},
     ],
   },
+  {
+    title: "Животные", icon: "🐾", href: "/search?cat=animals",
+    accent: "bg-[hsl(var(--nashlo-mint)/0.14)] text-[hsl(var(--nashlo-mint))]",
+    groups: [
+      { title: "Животные", href: "/search?cat=animals&subcategory=pets", items: [
+        { label: "Кошки",       href: "/search?cat=animals&subcategory=cats" },
+        { label: "Собаки",      href: "/search?cat=animals&subcategory=dogs" },
+        { label: "Птицы",       href: "/search?cat=animals&subcategory=birds" },
+        { label: "Грызуны",     href: "/search?cat=animals&subcategory=rodents" },
+        { label: "Рыбки",       href: "/search?cat=animals&subcategory=fish" },
+      ]},
+      { title: "Товары для животных", href: "/search?cat=animals&subcategory=supplies", items: [
+        { label: "Корм",         href: "/search?cat=animals&q=корм" },
+        { label: "Клетки/вольеры", href: "/search?cat=animals&q=клетка" },
+        { label: "Аксессуары",   href: "/search?cat=animals&q=аксессуары" },
+        { label: "Ветеринария",  href: "/search?cat=services&subcategory=vet" },
+      ]},
+      { title: "Сельхоз животные", href: "/search?cat=animals&subcategory=farm", items: [
+        { label: "КРС / Скот",  href: "/search?cat=animals&subcategory=farm&q=скот" },
+        { label: "Птицеводство",href: "/search?cat=animals&subcategory=farm&q=птица" },
+        { label: "Пчеловодство",href: "/search?cat=animals&subcategory=farm&q=пчелы" },
+      ]},
+    ],
+  },
+  {
+    title: "Другое", icon: "📦", href: "/search?cat=other",
+    accent: "bg-zinc-100 text-zinc-600",
+    groups: [
+      { title: "Разное", href: "/search?cat=other", items: [
+        { label: "Антиквариат",  href: "/search?cat=other&q=антиквариат" },
+        { label: "Книги",        href: "/search?cat=other&q=книги" },
+        { label: "Музыкальные инструменты", href: "/search?cat=other&q=инструменты" },
+        { label: "Коллекционирование",      href: "/search?cat=other&q=коллекция" },
+        { label: "Игры / Хобби",href: "/search?cat=other&q=хобби" },
+      ]},
+      { title: "Промышленность", href: "/search?cat=other&subcategory=industry", items: [
+        { label: "Оборудование",   href: "/search?cat=other&q=оборудование" },
+        { label: "Стройматериалы", href: "/search?cat=other&q=стройматериалы" },
+        { label: "Сельхоз техника",href: "/search?cat=other&q=сельхоз" },
+        { label: "Медоборудование",href: "/search?cat=other&q=медицинское" },
+      ]},
+      { title: "Готовый бизнес", href: "/search?cat=other&subcategory=business", items: [
+        { label: "Готовый бизнес", href: "/search?cat=other&q=готовый+бизнес" },
+        { label: "Франшизы",       href: "/search?cat=other&q=франшиза" },
+        { label: "Инвестиции",     href: "/search?cat=other&q=инвестиции" },
+      ]},
+    ],
+  },
 ]
 
 export function Header() {
   const pathname = usePathname()
   const [activeIndex, setActiveIndex] = useState(0)
   const [user, setUser] = useState<DemoUser | null>(null)
+  const [loginOpen, setLoginOpen] = useState(false)
   const [selectedCity, setSelectedCity] = useState("Санкт-Петербург")
   const [cityQuery, setCityQuery] = useState("")
   const [isCityOpen, setIsCityOpen] = useState(false)
@@ -269,33 +317,41 @@ export function Header() {
   }, [cityQuery])
 
   useEffect(() => {
-    // Try Supabase session first, fallback to localStorage demo user
     async function syncUser() {
       try {
-        const { getSupabase } = await import("@/lib/supabase")
-        const supabase = getSupabase()
-        const { data: { user: sbUser } } = await supabase.auth.getUser()
-        if (sbUser) {
-          setUser({
-            name: sbUser.user_metadata?.name || sbUser.email?.split("@")[0] || "Пользователь",
-            email: sbUser.email || "",
-            phone: sbUser.phone || "",
-          })
-          return
+        const res = await fetch("/api/auth/me")
+        if (res.ok) {
+          const data = await res.json()
+          if (data.user) {
+            setUser({ name: data.user.name || "Пользователь", phone: data.user.phone || "", email: "" })
+            return
+          }
         }
       } catch {}
-      // Fallback: demo localStorage user
-      const stored = window.localStorage.getItem("nashlo-demo-user")
-      setUser(stored ? JSON.parse(stored) : null)
+      setUser(null)
     }
 
     syncUser()
-    window.addEventListener("storage", syncUser)
     window.addEventListener("nashlo-auth-change", syncUser)
-    return () => {
-      window.removeEventListener("storage", syncUser)
-      window.removeEventListener("nashlo-auth-change", syncUser)
+    return () => window.removeEventListener("nashlo-auth-change", syncUser)
+  }, [])
+
+  useEffect(() => {
+    async function syncUnread() {
+      try {
+        const res = await fetch("/api/messages/conversations")
+        if (res.ok) {
+          const data = await res.json()
+          const total = (data.conversations ?? []).reduce(
+            (sum: number, c: { unreadCount: number }) => sum + (c.unreadCount || 0), 0
+          )
+          setUnreadChats(total)
+        }
+      } catch {}
     }
+    syncUnread()
+    const interval = setInterval(syncUnread, 30000)
+    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
@@ -318,10 +374,8 @@ export function Header() {
 
   async function logout() {
     try {
-      const { getSupabase } = await import("@/lib/supabase")
-      await getSupabase().auth.signOut()
+      await fetch("/api/auth/logout", { method: "POST" })
     } catch {}
-    window.localStorage.removeItem("nashlo-demo-user")
     window.dispatchEvent(new Event("nashlo-auth-change"))
     setUser(null)
     setIsProfileOpen(false)
@@ -462,14 +516,16 @@ export function Header() {
             {/* Desktop auth */}
             {!user ? (
               <>
-                <Link href="/login"
+                <button
+                  onClick={() => setLoginOpen(true)}
                   className="flex h-9 items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50">
                   Войти
-                </Link>
-                <Link href="/register"
+                </button>
+                <button
+                  onClick={() => router.push("/register")}
                   className="flex h-9 items-center justify-center rounded-xl bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-700">
                   Регистрация
-                </Link>
+                </button>
               </>
             ) : (
               <div className="relative">
@@ -489,7 +545,7 @@ export function Header() {
                   <div className="absolute right-0 top-11 z-[140] w-52 pt-1">
                     <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl shadow-zinc-950/15">
                       <div className="p-1.5">
-                        <Link href="/profile/demo" onClick={() => setIsProfileOpen(false)} className="block rounded-xl px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950">Мой профиль</Link>
+                        <Link href="/profile" onClick={() => setIsProfileOpen(false)} className="block rounded-xl px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950">Мой профиль</Link>
                         <Link href="/my-listings" onClick={() => setIsProfileOpen(false)} className="block rounded-xl px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950">Мои объявления</Link>
                         <Link href="/profile/settings" onClick={() => setIsProfileOpen(false)} className="block rounded-xl px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950">Настройки</Link>
                         <div className="my-1 h-px bg-zinc-100" />
@@ -583,7 +639,7 @@ export function Header() {
                 <button key={category.title} type="button" onClick={() => setActiveIndex(index)}
                   className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${activeIndex === index ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-700 hover:bg-white/70"}`}>
                   <span className="flex items-center gap-3">
-                    <img src={`/categories/${category.href.replace("/", "")}.svg`} alt="" className="h-8 w-8 rounded-xl object-cover shadow-sm" />
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-xl">{category.icon}</span>
                     {category.title}
                   </span>
                   <span>›</span>
@@ -699,7 +755,7 @@ export function Header() {
             {/* Menu */}
             <div className="p-3">
               {[
-                { href: "/profile/demo", label: "Мой профиль" },
+                { href: "/profile", label: "Мой профиль" },
                 { href: "/my-listings", label: "Мои объявления" },
                 { href: "/create", label: "Разместить объявление" },
                 { href: "/chat", label: "Сообщения" },
@@ -721,6 +777,8 @@ export function Header() {
           </div>
         </div>
       )}
+
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </>
   )
 }

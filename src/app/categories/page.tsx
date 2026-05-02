@@ -304,6 +304,122 @@ const ALL_CATEGORIES: Category[] = [
       ]},
     ],
   },
+  {
+    slug: "jobs", title: "Работа", emoji: "💼",
+    description: "Вакансии, резюме, подработка, фриланс",
+    color: "bg-[hsl(220,80%,96%)]", textColor: "text-[hsl(220,70%,50%)]",
+    href: "/search?cat=jobs",
+    groups: [
+      { title: "Офис и менеджмент", href: "/search?cat=jobs&subcategory=office", items: [
+        { label: "Менеджеры",           href: "/search?cat=jobs&q=менеджер" },
+        { label: "Бухгалтерия",         href: "/search?cat=jobs&q=бухгалтер" },
+        { label: "Юристы",              href: "/search?cat=jobs&q=юрист" },
+        { label: "HR и кадры",          href: "/search?cat=jobs&q=hr" },
+        { label: "Администраторы",      href: "/search?cat=jobs&q=администратор" },
+      ]},
+      { title: "IT и технологии", href: "/search?cat=jobs&q=it", items: [
+        { label: "Разработчики",        href: "/search?cat=jobs&q=разработчик" },
+        { label: "Дизайнеры",           href: "/search?cat=jobs&q=дизайнер" },
+        { label: "Тестировщики",        href: "/search?cat=jobs&q=тестировщик" },
+        { label: "Аналитики",           href: "/search?cat=jobs&q=аналитик" },
+      ]},
+      { title: "Рабочие и производство", href: "/search?cat=jobs&q=рабочий", items: [
+        { label: "Строители",           href: "/search?cat=jobs&q=строитель" },
+        { label: "Водители",            href: "/search?cat=jobs&q=водитель" },
+        { label: "Склад и логистика",   href: "/search?cat=jobs&q=склад" },
+        { label: "Охрана",              href: "/search?cat=jobs&q=охрана" },
+      ]},
+      { title: "Удалённая работа", href: "/search?cat=jobs&employment_type=remote", items: [
+        { label: "Фриланс",             href: "/search?cat=jobs&employment_type=remote&q=фриланс" },
+        { label: "Копирайтинг",         href: "/search?cat=jobs&q=копирайтер" },
+        { label: "Переводы",            href: "/search?cat=jobs&q=переводчик" },
+        { label: "SMM / Маркетинг",     href: "/search?cat=jobs&q=smm" },
+      ]},
+    ],
+  },
+  {
+    slug: "animals", title: "Животные", emoji: "🐾",
+    description: "Собаки, кошки, птицы, рыбки, корм и аксессуары",
+    color: "bg-[hsl(30,90%,95%)]", textColor: "text-[hsl(25,80%,50%)]",
+    href: "/search?cat=animals",
+    groups: [
+      { title: "Собаки", href: "/search?cat=animals&subcategory=dogs", items: [
+        { label: "Щенки",               href: "/search?cat=animals&subcategory=dogs&q=щенок" },
+        { label: "Взрослые собаки",     href: "/search?cat=animals&subcategory=dogs" },
+        { label: "Вязка",               href: "/search?cat=animals&subcategory=dogs&q=вязка" },
+        { label: "Аксессуары",          href: "/search?cat=animals&subcategory=dogs&q=аксессуары" },
+      ]},
+      { title: "Кошки", href: "/search?cat=animals&subcategory=cats", items: [
+        { label: "Котята",              href: "/search?cat=animals&subcategory=cats&q=котёнок" },
+        { label: "Взрослые кошки",      href: "/search?cat=animals&subcategory=cats" },
+        { label: "Вязка",               href: "/search?cat=animals&subcategory=cats&q=вязка" },
+      ]},
+      { title: "Другие животные", href: "/search?cat=animals", items: [
+        { label: "Птицы",               href: "/search?cat=animals&subcategory=birds" },
+        { label: "Рыбки и аквариумы",   href: "/search?cat=animals&subcategory=fish" },
+        { label: "Грызуны",             href: "/search?cat=animals&subcategory=rodents" },
+        { label: "Рептилии",            href: "/search?cat=animals&subcategory=reptiles" },
+      ]},
+      { title: "Товары для животных", href: "/search?cat=animals&subcategory=food", items: [
+        { label: "Корм",                href: "/search?cat=animals&q=корм" },
+        { label: "Лежанки и клетки",    href: "/search?cat=animals&q=клетка" },
+        { label: "Ветеринария",         href: "/search?cat=animals&subcategory=vet" },
+        { label: "Стрижка и уход",      href: "/search?cat=animals&q=стрижка" },
+      ]},
+    ],
+  },
+  {
+    slug: "hobby", title: "Хобби", emoji: "🎨",
+    description: "Книги, музыка, коллекционирование, творчество, игры",
+    color: "bg-[hsl(270,80%,97%)]", textColor: "text-[hsl(270,60%,55%)]",
+    href: "/search?cat=hobby",
+    groups: [
+      { title: "Книги и медиа", href: "/search?cat=hobby&subcategory=books", items: [
+        { label: "Книги",               href: "/search?cat=hobby&subcategory=books" },
+        { label: "Журналы",             href: "/search?cat=hobby&q=журнал" },
+        { label: "Музыкальные CD",      href: "/search?cat=hobby&q=cd" },
+        { label: "Видеоигры",           href: "/search?cat=hobby&q=игра" },
+      ]},
+      { title: "Музыка", href: "/search?cat=hobby&subcategory=music", items: [
+        { label: "Гитары",              href: "/search?cat=hobby&subcategory=music&q=гитара" },
+        { label: "Пианино и синтезаторы",href: "/search?cat=hobby&subcategory=music&q=пианино" },
+        { label: "Ударные",             href: "/search?cat=hobby&subcategory=music&q=барабаны" },
+        { label: "DJ-оборудование",     href: "/search?cat=hobby&subcategory=music&q=dj" },
+      ]},
+      { title: "Коллекционирование", href: "/search?cat=hobby&subcategory=games", items: [
+        { label: "Монеты",              href: "/search?cat=hobby&q=монеты" },
+        { label: "Марки",               href: "/search?cat=hobby&q=марки" },
+        { label: "Антиквариат",         href: "/search?cat=hobby&q=антиквариат" },
+        { label: "Настольные игры",     href: "/search?cat=hobby&q=настольная игра" },
+      ]},
+      { title: "Творчество и рукоделие", href: "/search?cat=hobby&subcategory=art", items: [
+        { label: "Рисование",           href: "/search?cat=hobby&subcategory=art&q=рисование" },
+        { label: "Вышивка и вязание",   href: "/search?cat=hobby&subcategory=handmade" },
+        { label: "Лепка",               href: "/search?cat=hobby&q=лепка" },
+        { label: "Фотооборудование",    href: "/search?cat=hobby&subcategory=photo" },
+      ]},
+    ],
+  },
+  {
+    slug: "other", title: "Другое", emoji: "📦",
+    description: "Всё, что не вошло в другие категории",
+    color: "bg-zinc-100", textColor: "text-zinc-600",
+    href: "/search?cat=other",
+    groups: [
+      { title: "Разное", href: "/search?cat=other", items: [
+        { label: "Все объявления",      href: "/search?cat=other" },
+        { label: "Бесплатно",           href: "/search?cat=other&priceMax=0" },
+        { label: "Обмен",               href: "/search?cat=other&q=обмен" },
+        { label: "Подарки",             href: "/search?cat=other&q=подарок" },
+      ]},
+      { title: "Услуги и прочее", href: "/search?cat=other&q=услуги", items: [
+        { label: "Аренда вещей",        href: "/search?cat=other&q=аренда" },
+        { label: "Ремонт и мастера",    href: "/search?cat=other&q=ремонт" },
+        { label: "Промышленное",        href: "/search?cat=other&q=промышленное" },
+        { label: "Сырьё и материалы",   href: "/search?cat=other&q=материалы" },
+      ]},
+    ],
+  },
 ]
 
 // ── Accordion category (mobile) ──────────────────────────────────────────────

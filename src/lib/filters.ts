@@ -304,6 +304,96 @@ export const CATEGORY_FILTERS: Record<string, CategoryFilterConfig> = {
     ],
   },
 
+  // ── Работа ─────────────────────────────────────────────────────────────────
+  jobs: {
+    label: "Работа",
+    fields: [
+      {
+        type: "select", key: "employment_type", label: "Тип занятости",
+        options: [
+          { value: "full",      label: "Полная занятость" },
+          { value: "part",      label: "Частичная занятость" },
+          { value: "remote",    label: "Удалённая работа" },
+          { value: "contract",  label: "Договор / проект" },
+          { value: "internship",label: "Стажировка" },
+        ],
+      },
+      {
+        type: "select", key: "experience", label: "Опыт",
+        options: [
+          { value: "no",   label: "Без опыта" },
+          { value: "1-3",  label: "1–3 года" },
+          { value: "3-5",  label: "3–5 лет" },
+          { value: "5+",   label: "Более 5 лет" },
+        ],
+      },
+      {
+        type: "select", key: "schedule", label: "График",
+        options: [
+          { value: "5_2",    label: "5/2" },
+          { value: "2_2",    label: "2/2" },
+          { value: "flex",   label: "Гибкий" },
+          { value: "shift",  label: "Сменный" },
+        ],
+      },
+      CITY_FIELD,
+    ],
+  },
+
+  // ── Животные ───────────────────────────────────────────────────────────────
+  animals: {
+    label: "Животные",
+    fields: [
+      {
+        type: "select", key: "subcategory", label: "Вид животного",
+        options: [
+          { value: "dogs",    label: "Собаки" },
+          { value: "cats",    label: "Кошки" },
+          { value: "birds",   label: "Птицы" },
+          { value: "fish",    label: "Рыбки и аквариумы" },
+          { value: "rodents", label: "Грызуны" },
+          { value: "reptiles",label: "Рептилии" },
+          { value: "other",   label: "Другие животные" },
+          { value: "food",    label: "Корм и аксессуары" },
+          { value: "vet",     label: "Ветеринарные услуги" },
+        ],
+      },
+      CONDITION_FIELD,
+      CITY_FIELD,
+    ],
+  },
+
+  // ── Хобби ──────────────────────────────────────────────────────────────────
+  hobby: {
+    label: "Хобби и отдых",
+    fields: [
+      {
+        type: "select", key: "subcategory", label: "Подкатегория",
+        options: [
+          { value: "books",    label: "Книги и журналы" },
+          { value: "music",    label: "Музыкальные инструменты" },
+          { value: "art",      label: "Рисование и творчество" },
+          { value: "games",    label: "Игры и коллекционирование" },
+          { value: "travel",   label: "Туризм" },
+          { value: "photo",    label: "Фото и видео" },
+          { value: "handmade", label: "Рукоделие" },
+          { value: "other",    label: "Другое" },
+        ],
+      },
+      CONDITION_FIELD,
+      CITY_FIELD,
+    ],
+  },
+
+  // ── Другое ─────────────────────────────────────────────────────────────────
+  other: {
+    label: "Другое",
+    fields: [
+      CONDITION_FIELD,
+      CITY_FIELD,
+    ],
+  },
+
   // ── Услуги ─────────────────────────────────────────────────────────────────
   services: {
     label: "Услуги",

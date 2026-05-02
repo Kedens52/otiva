@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { marketplaceCategories } from "@/lib/mock-marketplace"
+import { CATEGORY_META } from "@/lib/listing-types"
 
 export default function SitemapPage() {
   const links = [
@@ -9,7 +9,7 @@ export default function SitemapPage() {
     { href: "/create", label: "Разместить объявление" },
     { href: "/login", label: "Вход" },
     { href: "/register", label: "Регистрация" },
-    ...marketplaceCategories.map((category) => ({ href: category.href, label: category.title })),
+    ...CATEGORY_META.map((category) => ({ href: category.href, label: category.title })),
   ]
 
   return (

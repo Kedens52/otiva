@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
-import { listings } from '@/lib/mock-marketplace'
 import { z } from 'zod'
 import { Prisma, type ListingStatus } from '@prisma/client'
 
@@ -10,41 +9,23 @@ const createSchema = z.object({
   description: z.string().min(10).max(3000),
   price: z.number().min(0).max(1_000_000_000),
   categorySlug: z.string(),
-  images: z.array(z.string()).min(1).max(10),
-  location: z.string().max(200).optional(),
+  images: z.array(z.string()).max(10).default([]),
+  video: z.string().max(500).optional(),
+  location: z.string().max(300).optional(),
   city: z.string().max(100).optional(),
+  lat: z.number().optional(),
+  lng: z.number().optional(),
   attributes: z.record(z.unknown()).optional(),
 })
 
-function mockListingsResponse(request: NextRequest) {
-  const { searchParams } = request.nextUrl
-  const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
-  const pageSize = Math.min(50, parseInt(searchParams.get('pageSize') || '20'))
-  const categorySlug = searchParams.get('category')
-  const city = searchParams.get('city')
-  const query = searchParams.get('q')?.trim().toLowerCase()
-  const priceMin = searchParams.get('priceMin') ? parseInt(searchParams.get('priceMin')!) : undefined
-  const priceMax = searchParams.get('priceMax') ? parseInt(searchParams.get('priceMax')!) : undefined
-
-  const filtered = listings.filter((item) => {
-    const text = `${item.title} ${item.subtitle} ${item.description}`.toLowerCase()
-    const matchesCategory = !categorySlug || item.category === categorySlug
-    const matchesCity = !city || item.city === city
-    const matchesQuery = !query || text.includes(query)
-    const matchesMin = priceMin === undefined || item.price >= priceMin
-    const matchesMax = priceMax === undefined || item.price <= priceMax
-    return matchesCategory && matchesCity && matchesQuery && matchesMin && matchesMax
-  })
-
-  const start = (page - 1) * pageSize
-  return NextResponse.json({
-    items: filtered.slice(start, start + pageSize),
-    total: filtered.length,
-    page,
-    pageSize,
-    totalPages: Math.ceil(filtered.length / pageSize),
-    source: 'mock',
-  })
+// Basic content moderation
+const SPAM_PATTERNS = [
+  /(.)\1{6,}/i,           // repeated chars: aaaaaaa
+  /[A-ZА-ЯЁ]{10,}/,      // too many caps
+  /\b(казино|casino|займ онлайн|кредит без|быстрые деньги)\b/i,
+]
+function isSpam(text: string): boolean {
+  return SPAM_PATTERNS.some((p) => p.test(text))
 }
 
 export async function GET(request: NextRequest) {
@@ -114,8 +95,8 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / pageSize),
     })
   } catch (error) {
-    console.error('listings GET fallback to mock:', error)
-    return mockListingsResponse(request)
+    console.error('listings GET error:', error)
+    return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
   }
 }
 
@@ -128,6 +109,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const data = createSchema.parse(body)
+
+    if (isSpam(data.title) || isSpam(data.description)) {
+      return NextResponse.json({ error: 'Объявление не прошло проверку. Убедитесь, что текст написан нормально.' }, { status: 400 })
+    }
 
     const category = await prisma.category.findUnique({
       where: { slug: data.categorySlug },
@@ -143,8 +128,11 @@ export async function POST(request: NextRequest) {
         description: data.description,
         price: data.price,
         images: data.images,
+        video: data.video,
         location: data.location,
         city: data.city,
+        lat: data.lat,
+        lng: data.lng,
         attributes: data.attributes as Prisma.InputJsonValue | undefined,
         status: 'MODERATION',
         categoryId: category.id,

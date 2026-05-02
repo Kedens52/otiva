@@ -67,6 +67,17 @@ export function Footer() {
               <Link href="/cookies" className="underline underline-offset-2 hover:text-zinc-700">файлы cookie</Link>.
               {" "}Информация на сайте не является публичной офертой.
             </p>
+            <p className="mt-3 text-xs text-zinc-400">
+              Нужно приложение или сайт?{" "}
+              <a
+                href="https://vk.com/antonovdesign"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-zinc-500 underline underline-offset-2 hover:text-zinc-950"
+              >
+                Разработка под заказ
+              </a>
+            </p>
           </div>
         </div>
       </div>

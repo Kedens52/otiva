@@ -38,11 +38,13 @@ export async function POST(request: NextRequest) {
     })
 
     // Find or create user
+    let isNew = false
     let user = await prisma.user.findUnique({
       where: { phone: normalizedPhone },
     })
 
     if (!user) {
+      isNew = true
       user = await prisma.user.create({
         data: {
           phone: normalizedPhone,
@@ -62,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     const token = await signToken({
       userId: user.id,
-      phone: user.phone,
+      phone: user.phone || '',
       role: user.role,
     })
 
@@ -70,6 +72,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       message: 'Успешная авторизация',
+      isNew,
       user: {
         id: user.id,
         phone: user.phone,

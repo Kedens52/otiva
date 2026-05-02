@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
+import { prisma } from "@/lib/prisma"
 
 const ADMIN_COOKIE = "nashlo_admin_session"
 
@@ -16,26 +17,56 @@ function isAuthed(request: NextRequest) {
   return expected && token === expected
 }
 
-// In-memory moderation state (resets on server restart — fine for demo)
-const moderationState = new Map<string, "PENDING" | "APPROVED" | "REJECTED">()
-
 export async function GET(request: NextRequest) {
   if (!isAuthed(request)) return NextResponse.json({ error: "Нет доступа" }, { status: 403 })
-  // Return empty — admin pages use mock data directly on client
-  return NextResponse.json({ ok: true, items: [], total: 0 })
+
+  try {
+    const { searchParams } = request.nextUrl
+    const status = (searchParams.get("status") || "MODERATION") as "MODERATION" | "ACTIVE" | "REJECTED" | "ARCHIVED" | "SOLD"
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
+    const take = 50
+
+    const [items, total] = await Promise.all([
+      prisma.listing.findMany({
+        where: { status },
+        include: {
+          seller: { select: { id: true, name: true, phone: true, city: true } },
+          category: { select: { slug: true, nameRu: true } },
+        },
+        orderBy: { createdAt: "asc" },
+        skip: (page - 1) * take,
+        take,
+      }),
+      prisma.listing.count({ where: { status } }),
+    ])
+
+    return NextResponse.json({ ok: true, items, total, page })
+  } catch (error) {
+    console.error("admin listings GET error:", error)
+    return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 })
+  }
 }
 
 export async function POST(request: NextRequest) {
   if (!isAuthed(request)) return NextResponse.json({ error: "Нет доступа" }, { status: 403 })
+
   try {
     const body = await request.json()
     const { listingId, action } = body
+
     if (!listingId || !["APPROVED", "REJECTED"].includes(action)) {
       return NextResponse.json({ error: "Неверные данные" }, { status: 400 })
     }
-    moderationState.set(listingId, action)
-    return NextResponse.json({ ok: true, listingId, action })
-  } catch {
+
+    const newStatus = action === "APPROVED" ? "ACTIVE" : "REJECTED"
+    await prisma.listing.update({
+      where: { id: listingId },
+      data: { status: newStatus },
+    })
+
+    return NextResponse.json({ ok: true, listingId, action, newStatus })
+  } catch (error) {
+    console.error("admin listings POST error:", error)
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 })
   }
 }

@@ -19,7 +19,7 @@ const updateSchema = z.object({
   name: z.string().min(2).max(50).optional(),
   description: z.string().max(500).optional(),
   city: z.string().max(100).optional(),
-  avatar: z.string().url().optional(),
+  avatar: z.string().max(500).refine((value) => value === "" || value.startsWith("/") || /^https?:\/\//.test(value), "Некорректная ссылка на фото").optional(),
 })
 
 export async function PATCH(request: NextRequest) {

@@ -1,6 +1,7 @@
 "use client"
 
 export type AdSlotId = "leaderboard" | "sidebarTop" | "sidebarTall"
+export type AdStatus = "draft" | "pending" | "approved" | "rejected"
 
 export type ManagedAd = {
   id: string
@@ -16,6 +17,14 @@ export type ManagedAd = {
   endsAt: string
   erid: string
   ordName: string
+  ownerEmail?: string
+  ownerName?: string
+  status?: AdStatus
+  moderationComment?: string
+  impressions?: number
+  clicks?: number
+  lastImpressionAt?: string
+  lastClickAt?: string
 }
 
 const KEY = "nashlo-managed-ads"
@@ -44,6 +53,7 @@ export function createDefaultAd(slot: AdSlotId): ManagedAd {
     endsAt: ends.toISOString().slice(0, 10),
     erid: "erid: demo",
     ordName: "ОРД",
+    status: "draft",
   }
 }
 
@@ -74,4 +84,32 @@ export function getActiveAd(slot: AdSlotId): ManagedAd | null {
       ad.endsAt >= now
     ) ?? null
   )
+}
+
+export function trackAdImpression(id: string) {
+  if (typeof window === "undefined") return
+
+  const ads = loadManagedAds()
+  const next = ads.map((ad) =>
+    ad.id === id
+      ? { ...ad, impressions: (ad.impressions || 0) + 1, lastImpressionAt: new Date().toISOString() }
+      : ad
+  )
+  saveManagedAds(next)
+}
+
+export function trackAdClick(id: string) {
+  if (typeof window === "undefined") return
+
+  const ads = loadManagedAds()
+  const next = ads.map((ad) =>
+    ad.id === id
+      ? { ...ad, clicks: (ad.clicks || 0) + 1, lastClickAt: new Date().toISOString() }
+      : ad
+  )
+  saveManagedAds(next)
+}
+
+export function getTrackedAdHref(ad: ManagedAd) {
+  return `/api/ads/click?id=${encodeURIComponent(ad.id)}&to=${encodeURIComponent(ad.href)}`
 }

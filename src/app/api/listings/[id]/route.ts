@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
-import { getListingById } from '@/lib/mock-marketplace'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 
@@ -9,20 +8,15 @@ const updateSchema = z.object({
   title: z.string().min(3).max(100).optional(),
   description: z.string().min(10).max(3000).optional(),
   price: z.number().min(0).max(1_000_000_000).optional(),
-  images: z.array(z.string()).min(1).max(10).optional(),
-  location: z.string().max(200).optional(),
+  images: z.array(z.string()).max(10).optional(),
+  video: z.string().max(500).optional(),
+  location: z.string().max(300).optional(),
   city: z.string().max(100).optional(),
+  lat: z.number().optional(),
+  lng: z.number().optional(),
   attributes: z.record(z.unknown()).optional(),
   status: z.enum(['ACTIVE', 'SOLD', 'ARCHIVED']).optional(),
 })
-
-function mockListing(id: string) {
-  const listing = getListingById(id)
-  if (!listing) {
-    return NextResponse.json({ error: 'Объявление не найдено' }, { status: 404 })
-  }
-  return NextResponse.json({ listing, source: 'mock' })
-}
 
 export async function GET(
   _request: NextRequest,
@@ -49,7 +43,9 @@ export async function GET(
       },
     })
 
-    if (!listing) return mockListing(params.id)
+    if (!listing) {
+      return NextResponse.json({ error: 'Объявление не найдено' }, { status: 404 })
+    }
 
     prisma.listing.update({
       where: { id: params.id },
@@ -58,8 +54,8 @@ export async function GET(
 
     return NextResponse.json({ listing })
   } catch (error) {
-    console.error('listing GET fallback to mock:', error)
-    return mockListing(params.id)
+    console.error('listing GET error:', error)
+    return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
   }
 }
 

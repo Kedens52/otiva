@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation"
 import { Header } from "@/components/layout/Header"
 import { Footer } from "@/components/layout/Footer"
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs"
+import { MobileAdBanner } from "@/components/marketplace/MobileAdBanner"
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -23,6 +24,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
         {!isChatApp && <Breadcrumbs />}
         {children}
       </main>
+      {!isChatApp && <MobileAdBanner />}
       <div className="hidden lg:block">
         <Footer />
       </div>

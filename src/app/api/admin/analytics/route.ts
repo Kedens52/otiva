@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
+import { prisma } from "@/lib/prisma"
 
 const ADMIN_COOKIE = "nashlo_admin_session"
 
@@ -18,23 +19,68 @@ function isAuthed() {
 
 export async function GET() {
   if (!isAuthed()) return NextResponse.json({ error: "Нет доступа" }, { status: 403 })
-  return NextResponse.json({
-    users: { total: 12847, newLast30Days: 214 },
-    listings: { total: 1204, active: 1118, pendingModeration: 86, sold: 342 },
-    messages: { total: 94200, last7Days: 3481 },
-    byCategory: [
-      { category: "Автомобили",   count: 342 },
-      { category: "Электроника",  count: 289 },
-      { category: "Недвижимость", count: 198 },
-      { category: "Услуги",       count: 156 },
-      { category: "Одежда",       count: 134 },
-      { category: "Остальные",    count: 85  },
-    ],
-    byCity: [
-      { city: "Москва",          count: 421 },
-      { city: "Санкт-Петербург", count: 287 },
-      { city: "Казань",          count: 134 },
-      { city: "Краснодар",       count: 98  },
-    ],
-  })
+
+  try {
+    const now = new Date()
+    const last30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+
+    const [
+      totalUsers,
+      newUsers30,
+      totalListings,
+      activeListings,
+      moderationListings,
+      soldListings,
+      byCategory,
+      byCity,
+    ] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { createdAt: { gte: last30 } } }),
+      prisma.listing.count(),
+      prisma.listing.count({ where: { status: "ACTIVE" } }),
+      prisma.listing.count({ where: { status: "MODERATION" } }),
+      prisma.listing.count({ where: { status: "SOLD" } }),
+      prisma.listing.groupBy({
+        by: ["categoryId"],
+        _count: { id: true },
+        orderBy: { _count: { id: "desc" } },
+        take: 6,
+      }),
+      prisma.listing.groupBy({
+        by: ["city"],
+        where: { city: { not: null } },
+        _count: { id: true },
+        orderBy: { _count: { id: "desc" } },
+        take: 6,
+      }),
+    ])
+
+    // Resolve category names
+    const categoryIds = byCategory.map((r) => r.categoryId).filter(Boolean) as string[]
+    const categories = await prisma.category.findMany({
+      where: { id: { in: categoryIds } },
+      select: { id: true, nameRu: true },
+    })
+    const catMap = Object.fromEntries(categories.map((c) => [c.id, c.nameRu]))
+
+    return NextResponse.json({
+      users: { total: totalUsers, newLast30Days: newUsers30 },
+      listings: {
+        total: totalListings,
+        active: activeListings,
+        pendingModeration: moderationListings,
+        sold: soldListings,
+      },
+      byCategory: byCategory.map((r) => ({
+        category: catMap[r.categoryId ?? ""] ?? "Другое",
+        count: r._count.id,
+      })),
+      byCity: byCity
+        .filter((r) => r.city)
+        .map((r) => ({ city: r.city!, count: r._count.id })),
+    })
+  } catch (error) {
+    console.error("analytics GET error:", error)
+    return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 })
+  }
 }

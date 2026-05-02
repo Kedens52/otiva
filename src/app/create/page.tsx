@@ -1,8 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase"
 
 // ── Category definitions with their specific fields ──────────────────────────
 
@@ -15,6 +14,9 @@ const CATEGORIES = [
   { id: "kids",         label: "Детям",             icon: "🧸" },
   { id: "sport",        label: "Спорт и отдых",     icon: "⚽" },
   { id: "services",     label: "Услуги",            icon: "🔧" },
+  { id: "jobs",         label: "Работа",            icon: "💼" },
+  { id: "animals",      label: "Животные",          icon: "🐾" },
+  { id: "hobby",        label: "Хобби",             icon: "🎨" },
   { id: "other",        label: "Другое",            icon: "📦" },
 ]
 
@@ -526,6 +528,120 @@ const CATEGORY_EXTRA_FIELDS: Record<string, FieldDef[]> = {
       ],
     },
   ],
+
+  // ── Работа ─────────────────────────────────────────────────────────────────
+  "jobs": [
+    {
+      type: "toggle-row", key: "listing_type", label: "Тип объявления", required: true,
+      options: [
+        { value: "vacancy", label: "Вакансия" },
+        { value: "resume",  label: "Резюме" },
+      ],
+    },
+    {
+      type: "select", key: "employment_type", label: "Тип занятости", required: true,
+      options: [
+        { value: "full_time",   label: "Полная занятость" },
+        { value: "part_time",   label: "Частичная занятость" },
+        { value: "freelance",   label: "Фриланс / Проект" },
+        { value: "internship",  label: "Стажировка" },
+        { value: "volunteer",   label: "Волонтёрство" },
+      ],
+    },
+    {
+      type: "select", key: "schedule", label: "График",
+      options: [
+        { value: "full_day", label: "Полный день" },
+        { value: "shift",    label: "Сменный" },
+        { value: "flexible", label: "Гибкий" },
+        { value: "remote",   label: "Удалённая работа" },
+      ],
+    },
+    {
+      type: "select", key: "experience", label: "Опыт работы",
+      options: [
+        { value: "no_exp", label: "Без опыта" },
+        { value: "1_3",    label: "1–3 года" },
+        { value: "3_6",    label: "3–6 лет" },
+        { value: "6plus",  label: "Более 6 лет" },
+      ],
+    },
+    {
+      type: "input", key: "company", label: "Компания / Организация",
+      placeholder: "Название компании или работодателя",
+    },
+  ],
+
+  // ── Животные ───────────────────────────────────────────────────────────────
+  "animals": [
+    {
+      type: "select", key: "animal_type", label: "Тип животного", required: true,
+      options: [
+        { value: "dogs",     label: "Собаки" },
+        { value: "cats",     label: "Кошки" },
+        { value: "birds",    label: "Птицы" },
+        { value: "fish",     label: "Рыбки и аквариум" },
+        { value: "rodents",  label: "Грызуны и кролики" },
+        { value: "reptiles", label: "Рептилии" },
+        { value: "farm",     label: "Сельхоз животные" },
+        { value: "other",    label: "Другие животные" },
+        { value: "supplies", label: "Товары для животных" },
+        { value: "services", label: "Услуги (груминг, вет, передержка)" },
+      ],
+    },
+    {
+      type: "select", key: "breed", label: "Порода",
+      options: [
+        "Немецкая овчарка","Лабрадор","Хаски","Голден ретривер","Йоркширский терьер",
+        "Французский бульдог","Чихуахуа","Шпиц","Британская","Шотландская вислоухая",
+        "Мейн-кун","Сфинкс","Метис / Беспородный","Другая",
+      ],
+    },
+    {
+      type: "toggle-row", key: "animal_gender", label: "Пол",
+      options: [
+        { value: "male",   label: "Мальчик" },
+        { value: "female", label: "Девочка" },
+      ],
+    },
+    {
+      type: "select", key: "age", label: "Возраст",
+      options: [
+        { value: "puppy",   label: "Щенок / Котёнок" },
+        { value: "young",   label: "Молодой (до 1 года)" },
+        { value: "adult",   label: "Взрослый (1–7 лет)" },
+        { value: "senior",  label: "Пожилой (7+ лет)" },
+      ],
+    },
+  ],
+
+  // ── Хобби ──────────────────────────────────────────────────────────────────
+  "hobby": [
+    {
+      type: "select", key: "subcategory", label: "Подкатегория", required: true,
+      options: [
+        { value: "books",     label: "Книги" },
+        { value: "music",     label: "Музыкальные инструменты" },
+        { value: "art",       label: "Рисование и творчество" },
+        { value: "games",     label: "Настольные игры / Игры" },
+        { value: "collectibles", label: "Коллекционирование" },
+        { value: "photo",     label: "Фото и видео" },
+        { value: "sewing",    label: "Рукоделие и шитьё" },
+        { value: "garden",    label: "Садоводство" },
+        { value: "travel",    label: "Путешествия" },
+        { value: "other",     label: "Другое" },
+      ],
+    },
+    {
+      type: "select", key: "condition", label: "Состояние",
+      options: [
+        { value: "new",       label: "Новое" },
+        { value: "like_new",  label: "Как новое" },
+        { value: "good",      label: "Хорошее" },
+        { value: "fair",      label: "Удовлетворительное" },
+      ],
+    },
+  ],
 }
 
 const CITIES = [
@@ -535,21 +651,44 @@ const CITIES = [
   "Иркутск","Хабаровск","Владивосток","Ставрополь","Тула","Калининград",
 ]
 
-type LocalListing = Record<string, unknown> & { id: string; created_at: string }
-
-function loadLocal(): LocalListing[] {
-  try { return JSON.parse(localStorage.getItem("nashlo-listings") || "[]") } catch { return [] }
-}
-
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function CreatePage() {
   const router = useRouter()
   const [category, setCategory] = useState("")
   const [extraFields, setExtraFields] = useState<Record<string, string>>({})
-  const [form, setForm] = useState({ title: "", description: "", price: "", city: "", condition: "used", free: false })
+  const [form, setForm] = useState({ title: "", description: "", price: "", city: "", address: "", condition: "used", free: false })
   const [loading, setLoading] = useState(false)
   const [error, setError]   = useState("")
+  const [images, setImages] = useState<string[]>([])
+  const [video, setVideo]   = useState<string>("")
+  const [uploading, setUploading] = useState(false)
+  const [geocoding, setGeocoding] = useState(false)
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
+  const geocodeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  async function geocodeAddress(address: string) {
+    if (!address.trim()) return
+    setGeocoding(true)
+    try {
+      const query = form.city ? `${form.city}, ${address}` : address
+      const res = await fetch(`/api/geocode?address=${encodeURIComponent(query)}`)
+      if (res.ok) { const data = await res.json(); setCoords(data) }
+    } catch { /* ignore */ } finally {
+      setGeocoding(false)
+    }
+  }
+
+  function onAddressChange(value: string) {
+    setForm((f) => ({ ...f, address: value }))
+    setCoords(null)
+    if (geocodeTimer.current) clearTimeout(geocodeTimer.current)
+    if (value.trim()) {
+      geocodeTimer.current = setTimeout(() => geocodeAddress(value), 800)
+    }
+  }
 
   function updateExtra(key: string, value: string) {
     setExtraFields((f) => ({ ...f, [key]: value }))
@@ -561,6 +700,28 @@ export default function CreatePage() {
   }
 
   const extraDefs = CATEGORY_EXTRA_FIELDS[category] ?? []
+
+  async function uploadFile(file: File, type: "image" | "video") {
+    setUploading(true)
+    const fd = new FormData()
+    fd.append("file", file)
+    fd.append("type", type)
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const text = await res.text()
+      let data: { url?: string; error?: string }
+      try { data = JSON.parse(text) } catch {
+        throw new Error(res.status === 413 ? "Файл слишком большой для сервера (>50MB)" : "Ошибка сервера при загрузке")
+      }
+      if (!res.ok) throw new Error(data.error || "Ошибка загрузки")
+      if (type === "image") setImages((prev) => [...prev, data.url!])
+      else setVideo(data.url!)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка загрузки")
+    } finally {
+      setUploading(false)
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -579,30 +740,33 @@ export default function CreatePage() {
     }
 
     setLoading(true)
-    const payload = {
+
+    // Build description with minimum length
+    const description = form.description.trim() || form.title.trim()
+    const descFull = description.length < 10 ? description.padEnd(10, " ") : description
+
+    const payload: Record<string, unknown> = {
       title: form.title.trim(),
-      description: form.description.trim(),
+      description: descFull,
       price: form.free ? 0 : Number(form.price),
-      category,
+      categorySlug: category,
       city: form.city,
-      condition: form.condition,
-      status: "active",
-      ...extraFields,
+      images,
+      attributes: { condition: form.condition, ...extraFields },
     }
+    if (video) payload.video = video
+    if (form.address.trim()) payload.location = form.address.trim()
+    if (coords) { payload.lat = coords.lat; payload.lng = coords.lng }
 
     try {
-      if (isSupabaseConfigured()) {
-        const supabase = getSupabase()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) { router.push("/login?from=/create"); return }
-        const { error: dbError } = await supabase.from("listings").insert({ user_id: user.id, ...payload })
-        if (dbError) throw new Error(dbError.message)
-      } else {
-        const demoUser = localStorage.getItem("nashlo-demo-user")
-        if (!demoUser) { router.push("/login?from=/create"); return }
-        const newItem: LocalListing = { id: "local-" + Date.now(), created_at: new Date().toISOString(), images: [], ...payload }
-        localStorage.setItem("nashlo-listings", JSON.stringify([newItem, ...loadLocal()]))
-      }
+      const res = await fetch("/api/listings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      if (res.status === 401) { router.push("/login?from=/create"); return }
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Ошибка при сохранении")
       router.push("/my-listings")
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Ошибка при сохранении")
@@ -821,19 +985,118 @@ export default function CreatePage() {
           )}
         </div>
 
-        {/* ── City ───────────────────────────────────────────────────────── */}
+        {/* ── City + Address ─────────────────────────────────────────────── */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-zinc-700">
+              Город <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={form.city}
+              onChange={(e) => update("city", e.target.value)}
+              className="mt-1.5 h-12 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))] focus:bg-white"
+            >
+              <option value="">Выберите город</option>
+              {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-zinc-700">
+              Адрес <span className="text-zinc-400 font-normal text-xs">(для карты)</span>
+            </label>
+            <div className="relative mt-1.5">
+              <input
+                value={form.address}
+                onChange={(e) => onAddressChange(e.target.value)}
+                placeholder="ул. Ленина, 10"
+                className="h-12 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 pr-10 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))] focus:bg-white"
+              />
+              {geocoding && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700" />
+                </div>
+              )}
+              {coords && !geocoding && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 text-sm">📍</span>
+              )}
+            </div>
+            {coords && <p className="mt-1 text-xs text-emerald-600">Место найдено на карте ✓</p>}
+          </div>
+        </div>
+
+        {/* Фото */}
         <div>
-          <label className="block text-sm font-medium text-zinc-700">
-            Город <span className="text-red-500">*</span>
-          </label>
-          <select
-            value={form.city}
-            onChange={(e) => update("city", e.target.value)}
-            className="mt-1.5 h-12 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))] focus:bg-white"
-          >
-            <option value="">Выберите город</option>
-            {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <p className="mb-2 text-sm font-medium text-zinc-700">Фотографии <span className="text-zinc-400">(до 10 штук)</span></p>
+          <div className="flex flex-wrap gap-2">
+            {images.map((url, i) => (
+              <div key={i} className="relative h-24 w-24 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50">
+                <img src={url} alt="" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
+                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-[10px] text-white"
+                >✕</button>
+              </div>
+            ))}
+            {images.length < 10 && (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={uploading}
+                className="flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-400 hover:border-zinc-400 hover:text-zinc-600 disabled:opacity-50"
+              >
+                <span className="text-2xl">+</span>
+                <span className="text-[10px]">Фото</span>
+              </button>
+            )}
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files || [])
+                files.slice(0, 10 - images.length).forEach((f) => uploadFile(f, "image"))
+                e.target.value = ""
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Видео */}
+        <div>
+          <p className="mb-2 text-sm font-medium text-zinc-700">Видео <span className="text-zinc-400">(до 50MB, необязательно)</span></p>
+          {video ? (
+            <div className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50">
+              <video src={video} controls className="max-h-48 w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => setVideo("")}
+                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white"
+              >✕</button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => videoInputRef.current?.click()}
+              disabled={uploading}
+              className="flex h-16 w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-zinc-200 text-sm text-zinc-400 hover:border-zinc-400 hover:text-zinc-600 disabled:opacity-50"
+            >
+              <span className="text-lg">▶</span> Загрузить видео
+            </button>
+          )}
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/mp4,video/webm,video/quicktime"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) uploadFile(f, "video")
+              e.target.value = ""
+            }}
+          />
         </div>
 
         {error && (
@@ -842,10 +1105,10 @@ export default function CreatePage() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || uploading}
           className="h-12 w-full rounded-2xl bg-[hsl(var(--nashlo-orange))] text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
         >
-          {loading ? "Публикуем..." : "Опубликовать объявление"}
+          {uploading ? "Загружаем фото..." : loading ? "Публикуем..." : "Опубликовать объявление"}
         </button>
 
         <p className="text-center text-xs text-zinc-400">

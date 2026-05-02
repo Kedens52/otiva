@@ -10,3 +10,4 @@ build/
 *.7z
 *.mp4
 *.mov
+tsconfig.tsbuildinfo

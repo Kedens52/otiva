@@ -21,23 +21,19 @@ export function ReportModal({ listingId, listingTitle, onClose }: Props) {
   const [selectedReason, setSelectedReason] = useState("")
   const [comment, setComment] = useState("")
   const [sent, setSent] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
-  function submit() {
-    if (!selectedReason) return
-    // Save to localStorage moderation queue
-    const report = {
-      id: `report-${Date.now()}`,
-      listingId,
-      listingTitle,
-      reason: selectedReason,
-      comment: comment.trim(),
-      ts: Date.now(),
-      status: "pending",
-    }
+  async function submit() {
+    if (!selectedReason || submitting) return
+    setSubmitting(true)
     try {
-      const existing = JSON.parse(localStorage.getItem("nashlo-reports") || "[]")
-      localStorage.setItem("nashlo-reports", JSON.stringify([report, ...existing]))
+      await fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId, reason: selectedReason, comment: comment.trim() }),
+      })
     } catch {}
+    setSubmitting(false)
     setSent(true)
   }
 
@@ -110,10 +106,10 @@ export function ReportModal({ listingId, listingTitle, onClose }: Props) {
               </button>
               <button
                 onClick={submit}
-                disabled={!selectedReason}
+                disabled={!selectedReason || submitting}
                 className="flex-1 rounded-2xl bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-40"
               >
-                Отправить жалобу
+                {submitting ? "Отправляем…" : "Отправить жалобу"}
               </button>
             </div>
           </>

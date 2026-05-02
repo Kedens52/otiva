@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
+import { createDefaultAd, loadManagedAds, saveManagedAds, type AdSlotId } from "@/lib/ad-store"
 
 type AdPlan = {
   id: string
@@ -109,7 +111,14 @@ function readCabinet(): AdCabinet | null {
   }
 }
 
+function slotByPlan(planId: string): AdSlotId {
+  if (planId === "brand") return "sidebarTall"
+  if (planId === "start") return "sidebarTop"
+  return "leaderboard"
+}
+
 export default function AdvertisingPage() {
+  const router = useRouter()
   const [selectedPlan, setSelectedPlan] = useState("city")
   const [months, setMonths] = useState(MIN_MONTHS)
   const [brandName, setBrandName] = useState("Мой бизнес")
@@ -131,8 +140,10 @@ export default function AdvertisingPage() {
   const [cabinet, setCabinet] = useState<AdCabinet | null>(null)
 
   useEffect(() => {
-    setCabinet(readCabinet())
-  }, [])
+    const savedCabinet = readCabinet()
+    setCabinet(savedCabinet)
+    if (savedCabinet) router.replace("/ad-cabinet")
+  }, [router])
 
   const plan = plans.find((item) => item.id === selectedPlan) || plans[1]
   const activePlan = plans.find((item) => item.id === cabinet?.planId) || plans[1]
@@ -202,6 +213,27 @@ export default function AdvertisingPage() {
     setFormError("")
     const safeMonths = Math.max(MIN_MONTHS, months)
     const now = Date.now()
+    const startsAt = new Date(now).toISOString().slice(0, 10)
+    const endsAt = new Date(now + safeMonths * 30 * DAY).toISOString().slice(0, 10)
+    const ownerEmail = email.trim().toLowerCase()
+    const ownerName = brandName.trim() || legalName.trim() || "Рекламодатель"
+    const application = {
+      ...createDefaultAd(slotByPlan(selectedPlan)),
+      title: adObject.trim() || ownerName,
+      subtitle: creativeDescription.trim(),
+      cta: "Смотреть",
+      href: targetUrl.trim(),
+      advertiser: ownerName,
+      active: false,
+      startsAt,
+      endsAt,
+      erid: erid.trim(),
+      ordName: ordName.trim(),
+      ownerEmail,
+      ownerName,
+      status: "pending" as const,
+      moderationComment: "",
+    }
 
     saveCabinet({
       planId: selectedPlan,
@@ -218,6 +250,10 @@ export default function AdvertisingPage() {
       adObject: adObject.trim(),
       targetUrl: targetUrl.trim(),
     })
+    saveManagedAds([application, ...loadManagedAds()])
+    localStorage.setItem("nashlo-advertiser-email", ownerEmail)
+    localStorage.setItem("nashlo-advertiser-name", ownerName)
+    router.push("/ad-cabinet")
   }
 
   function extend() {

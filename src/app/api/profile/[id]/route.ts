@@ -1,25 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { listings } from '@/lib/mock-marketplace'
-
-function mockProfile(id: string) {
-  return NextResponse.json({
-    seller: {
-      id,
-      name: id === 'demo' ? 'ANTONOV I' : 'Демо продавец',
-      avatar: null,
-      description: 'Демо-профиль на мок-данных, пока база не подключена.',
-      city: 'Санкт-Петербург',
-      isVerified: true,
-      rating: 4.9,
-      reviewCount: 21,
-      createdAt: new Date('2026-01-01').toISOString(),
-      listings: listings.slice(0, 6),
-      reviews: [],
-    },
-    source: 'mock',
-  })
-}
 
 export async function GET(
   _request: NextRequest,
@@ -55,12 +35,12 @@ export async function GET(
     })
 
     if (!seller) {
-      return mockProfile(params.id)
+      return NextResponse.json({ error: 'Пользователь не найден' }, { status: 404 })
     }
 
     return NextResponse.json({ seller })
   } catch (error) {
-    console.error('profile GET fallback to mock:', error)
-    return mockProfile(params.id)
+    console.error('profile GET error:', error)
+    return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
   }
 }

@@ -1,150 +1,285 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense, useEffect, useState } from "react"
 import { Logo } from "@/components/layout/Logo"
-import { getSupabase } from "@/lib/supabase"
 
-export default function RegisterPage() {
+type Step = "phone" | "code" | "profile"
+
+function normalizePhone(raw: string) {
+  const digits = raw.replace(/\D/g, "").slice(0, 11)
+  if (digits.startsWith("8")) return `+7${digits.slice(1)}`
+  if (digits.startsWith("7") && digits.length === 11) return `+${digits}`
+  if (digits.length === 10) return `+7${digits}`
+  return raw
+}
+
+function RegisterForm() {
   const router = useRouter()
-  const [form, setForm] = useState({ name: "", email: "", password: "" })
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState("")
-  const [isError, setIsError] = useState(false)
-  const [done, setDone] = useState(false)
+  const params = useSearchParams()
+  const redirectTo = params.get("from") || "/profile"
+  const [step, setStep] = useState<Step>("phone")
+  const [phone, setPhone] = useState("")
+  const [code, setCode] = useState("")
+  const [name, setName] = useState("")
+  const [city, setCity] = useState("")
+  const [description, setDescription] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState("")
 
-  function update(field: keyof typeof form, value: string) {
-    setForm((f) => ({ ...f, [field]: value }))
-  }
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const user = data?.user
+        if (user) {
+          setPhone(user.phone || "")
+          setName(user.name || "")
+          setCity(user.city || "")
+          setDescription(user.description || "")
+          setStep("profile")
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    setMessage("")
-    setIsError(false)
+  async function sendCode(event: React.FormEvent) {
+    event.preventDefault()
+    setError("")
 
-    if (form.name.trim().length < 2)    { setIsError(true); setMessage("Введите имя (минимум 2 символа)."); return }
-    if (!form.email.includes("@"))      { setIsError(true); setMessage("Введите корректный email."); return }
-    if (form.password.length < 6)       { setIsError(true); setMessage("Пароль не менее 6 символов."); return }
-
-    setLoading(true)
-    const supabase = getSupabase()
-    const { error } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        data: { name: form.name.trim() },
-      },
-    })
-    setLoading(false)
-
-    if (error) {
-      setIsError(true)
-      if (error.message.includes("already registered")) setMessage("Этот email уже зарегистрирован. Войдите.")
-      else setMessage(error.message)
+    const normalized = normalizePhone(phone)
+    if (normalized.replace(/\D/g, "").length !== 11) {
+      setError("Введите номер РФ в формате +7 999 000-00-00.")
       return
     }
 
-    setDone(true)
+    setSubmitting(true)
+    try {
+      const res = await fetch("/api/auth/send-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: normalized }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Не удалось отправить код")
+      setPhone(data.phone || normalized)
+      setStep("code")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка отправки кода")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  if (done) {
+  async function verifyCode(event: React.FormEvent) {
+    event.preventDefault()
+    setError("")
+
+    if (code.length !== 6) {
+      setError("Введите 6-значный код.")
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const res = await fetch("/api/auth/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: normalizePhone(phone), code }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Неверный код")
+
+      const user = data.user
+      setName(user?.name || "")
+      window.dispatchEvent(new Event("nashlo-auth-change"))
+      setStep("profile")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка проверки кода")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function saveProfile(event: React.FormEvent) {
+    event.preventDefault()
+    setError("")
+
+    if (name.trim().length < 2) {
+      setError("Введите имя, чтобы покупатели понимали, с кем общаются.")
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const res = await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          city: city.trim(),
+          description: description.trim(),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Не удалось сохранить профиль")
+
+      window.dispatchEvent(new Event("nashlo-auth-change"))
+      router.replace(redirectTo)
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка сохранения профиля")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-4">
-        <div className="mx-auto max-w-sm rounded-[32px] border border-zinc-200 bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-3xl">✓</div>
-          <h1 className="text-2xl font-semibold text-zinc-950">Почти готово!</h1>
-          <p className="mt-3 text-sm leading-6 text-zinc-500">
-            Мы отправили письмо на <strong>{form.email}</strong>. Перейдите по ссылке, чтобы подтвердить аккаунт.
-          </p>
-          <Link href="/login" className="mt-6 block rounded-2xl bg-zinc-950 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800">
-            Войти
-          </Link>
-        </div>
+      <main className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-950" />
       </main>
     )
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-6 lg:grid lg:min-h-[720px] lg:grid-cols-[1fr_460px] lg:items-center lg:gap-10 lg:py-12">
-      <div className="mb-10 flex justify-center pt-4 lg:hidden">
-        <Logo />
-      </div>
-
+    <main className="mx-auto grid min-h-screen max-w-7xl px-4 py-8 lg:grid-cols-[1fr_460px] lg:items-center lg:gap-12 lg:py-12">
       <section className="hidden lg:block">
-        <h1 className="max-w-2xl text-5xl font-semibold tracking-tight text-zinc-950 sm:text-6xl">Создайте аккаунт</h1>
+        <Logo />
+        <h1 className="mt-10 max-w-2xl text-5xl font-semibold tracking-tight text-zinc-950 sm:text-6xl">
+          Создайте профиль продавца
+        </h1>
         <p className="mt-5 max-w-xl text-lg leading-8 text-zinc-500">
-          Размещайте объявления, общайтесь с покупателями и ведите историю сделок.
+          Один аккаунт для объявлений, сообщений, избранного и управления профилем на Нашло.
         </p>
       </section>
 
-      <section className="mx-auto w-full max-w-md rounded-[28px] border border-zinc-200 bg-zinc-50 p-4 shadow-inner sm:p-6 lg:max-w-none lg:rounded-[32px]">
-        <div className="rounded-[24px] bg-white p-5 shadow-sm sm:rounded-[28px] sm:p-6">
-          <div className="mb-6 lg:hidden">
-            <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">Регистрация</h1>
-          </div>
-          <h2 className="hidden text-2xl font-semibold text-zinc-950 lg:block">Создать аккаунт</h2>
-
-          <form onSubmit={submit} className="mt-6 space-y-4">
-            <label className="block">
-              <span className="text-sm font-medium text-zinc-600">Имя</span>
-              <input
-                type="text"
-                autoComplete="name"
-                value={form.name}
-                onChange={(e) => update("name", e.target.value)}
-                placeholder="Александр"
-                className="mt-1.5 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm outline-none transition focus:border-zinc-400 focus:bg-white"
-              />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-medium text-zinc-600">Email</span>
-              <input
-                type="email"
-                autoComplete="email"
-                value={form.email}
-                onChange={(e) => update("email", e.target.value)}
-                placeholder="you@example.com"
-                className="mt-1.5 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm outline-none transition focus:border-zinc-400 focus:bg-white"
-              />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-medium text-zinc-600">Пароль</span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={form.password}
-                onChange={(e) => update("password", e.target.value)}
-                placeholder="Минимум 6 символов"
-                className="mt-1.5 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm outline-none transition focus:border-zinc-400 focus:bg-white"
-              />
-            </label>
-
-            {message && (
-              <p className={`rounded-2xl px-4 py-3 text-sm font-medium ${isError ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>
-                {message}
+      <section className="mx-auto flex w-full max-w-md flex-col justify-center">
+        <div className="mb-8 flex justify-center lg:hidden">
+          <Logo />
+        </div>
+        <div className="rounded-[32px] border border-zinc-200 bg-zinc-50 p-4 shadow-inner">
+          <div className="rounded-[28px] bg-white p-5 shadow-sm sm:p-6">
+            <div className="mb-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[hsl(var(--nashlo-orange))]">
+                {step === "profile" ? "Профиль" : "Регистрация"}
               </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+                {step === "phone" && "Введите телефон"}
+                {step === "code" && "Подтвердите номер"}
+                {step === "profile" && "Заполните профиль"}
+              </h2>
+              <p className="mt-1.5 text-sm leading-6 text-zinc-500">
+                {step === "phone" && "Мы отправим SMS-код. Если аккаунта ещё нет, создадим его автоматически."}
+                {step === "code" && `Код отправлен на ${phone}.`}
+                {step === "profile" && "Эти данные будут видны в ваших объявлениях и карточке продавца."}
+              </p>
+            </div>
+
+            {step === "phone" && (
+              <form onSubmit={sendCode} className="space-y-4">
+                <label className="block">
+                  <span className="text-sm font-medium text-zinc-700">Телефон</span>
+                  <input
+                    value={phone}
+                    onChange={(event) => setPhone(event.target.value)}
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="+7 (999) 000-00-00"
+                    className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))] focus:bg-white"
+                    autoFocus
+                  />
+                </label>
+                {error && <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">{error}</p>}
+                <button disabled={submitting} className="h-12 w-full rounded-2xl bg-[hsl(var(--nashlo-orange))] text-sm font-semibold text-white disabled:opacity-50">
+                  {submitting ? "Отправляем..." : "Получить код"}
+                </button>
+              </form>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-2xl bg-zinc-950 py-3.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-50"
-            >
-              {loading ? "Создаём аккаунт…" : "Зарегистрироваться"}
-            </button>
-          </form>
+            {step === "code" && (
+              <form onSubmit={verifyCode} className="space-y-4">
+                <label className="block">
+                  <span className="text-sm font-medium text-zinc-700">Код из SMS</span>
+                  <input
+                    value={code}
+                    onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="000000"
+                    className="mt-2 h-14 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-center text-2xl font-bold tracking-[0.35em] outline-none transition focus:border-[hsl(var(--nashlo-orange))] focus:bg-white"
+                    autoFocus
+                  />
+                </label>
+                {error && <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">{error}</p>}
+                <button disabled={submitting || code.length !== 6} className="h-12 w-full rounded-2xl bg-[hsl(var(--nashlo-orange))] text-sm font-semibold text-white disabled:opacity-50">
+                  {submitting ? "Проверяем..." : "Продолжить"}
+                </button>
+                <button type="button" onClick={() => { setStep("phone"); setCode(""); setError("") }} className="w-full rounded-2xl py-2 text-sm font-medium text-zinc-500">
+                  Изменить номер
+                </button>
+              </form>
+            )}
 
-          <p className="mt-5 text-center text-sm text-zinc-500">
-            Уже есть аккаунт?{" "}
-            <Link href="/login" className="font-semibold text-zinc-950 hover:underline">
-              Войти
-            </Link>
-          </p>
+            {step === "profile" && (
+              <form onSubmit={saveProfile} className="space-y-4">
+                <label className="block">
+                  <span className="text-sm font-medium text-zinc-700">Имя *</span>
+                  <input
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Как вас зовут"
+                    className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))] focus:bg-white"
+                    autoFocus
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-zinc-700">Город</span>
+                  <input
+                    value={city}
+                    onChange={(event) => setCity(event.target.value)}
+                    placeholder="Москва"
+                    className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))] focus:bg-white"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-zinc-700">О себе</span>
+                  <textarea
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value.slice(0, 500))}
+                    rows={3}
+                    placeholder="Коротко о себе, опыте продаж или услугах"
+                    className="mt-2 w-full resize-none rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))] focus:bg-white"
+                  />
+                </label>
+                {error && <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">{error}</p>}
+                <button disabled={submitting} className="h-12 w-full rounded-2xl bg-[hsl(var(--nashlo-orange))] text-sm font-semibold text-white disabled:opacity-50">
+                  {submitting ? "Сохраняем..." : "Сохранить профиль"}
+                </button>
+              </form>
+            )}
+
+            <p className="mt-5 text-center text-xs text-zinc-400">
+              Уже есть аккаунт?{" "}
+              <Link href={`/login?from=${encodeURIComponent(redirectTo)}`} className="font-semibold text-zinc-950 hover:underline">
+                Войти
+              </Link>
+            </p>
+          </div>
         </div>
       </section>
     </main>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   )
 }

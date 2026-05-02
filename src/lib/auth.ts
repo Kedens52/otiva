@@ -6,8 +6,8 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback-secret-change-in-production'
 )
 
-const COOKIE_NAME = 'nashlo_token'
-const COOKIE_OPTIONS = {
+export const COOKIE_NAME = 'nashlo_token'
+export const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax' as const,
@@ -84,19 +84,33 @@ export function generateOtpCode(): string {
 }
 
 export async function sendSmsCode(phone: string, code: string): Promise<void> {
-  // In dev mode, just log to console
+  // Dev mode: log to console
   if (!process.env.SMS_API_KEY) {
-    console.log(`[DEV] SMS to ${phone}: Your code is ${code}`)
+    console.log(`[DEV] SMS to ${phone}: код ${code}`)
     return
   }
 
-  // Production: integrate with SMS provider (e.g., SMSC.ru)
-  const response = await fetch(
-    `https://smsc.ru/sys/send.php?login=YOUR_LOGIN&psw=${process.env.SMS_API_KEY}&phones=${encodeURIComponent(phone)}&mes=Your+Нашло+code:+${code}&sender=${process.env.SMS_SENDER || 'Нашло'}&fmt=3`
-  )
+  // SMS.ru API
+  const params = new URLSearchParams({
+    api_id: process.env.SMS_API_KEY,
+    to: phone,
+    msg: `Ваш код для входа на Otiva: ${code}`,
+    json: '1',
+    from: 'Nashlo',
+  })
+
+  const response = await fetch(`https://sms.ru/sms/send?${params.toString()}`)
 
   if (!response.ok) {
-    throw new Error('SMS sending failed')
+    console.error('SMS.ru HTTP error:', response.status)
+    throw new Error('SMS request failed')
+  }
+
+  const data = await response.json()
+  console.log('SMS.ru response:', JSON.stringify(data))
+
+  if (data.status !== 'OK') {
+    throw new Error(`SMS error: ${data.status_text || data.status}`)
   }
 }
 
