@@ -282,7 +282,7 @@ function LoginForm() {
             {/* Yandex */}
             <button
               type="button"
-              onClick={() => { window.location.href = "/api/auth/yandex" }}
+              onClick={() => { window.location.href = `/api/auth/yandex?next=${encodeURIComponent(redirectTo)}` }}
               className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FC3F1D] text-white shadow-sm transition hover:brightness-110"
               aria-label="Войти через Яндекс"
             >

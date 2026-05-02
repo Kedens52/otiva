@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
 import { signToken, setAuthCookie } from "@/lib/auth"
+import { findOrCreateOAuthUser } from "@/lib/oauth-users"
 
 type VkPayload = {
   access_token?: string
@@ -77,38 +77,6 @@ async function profileFromVkApi(accessToken?: string, userId?: string): Promise<
   return profileFromObject(vkUser, userId)
 }
 
-async function findOrCreateUser(profile: VkProfile) {
-  let user = await prisma.user.findUnique({ where: { vkId: profile.vkId } })
-
-  if (!user && profile.email) {
-    user = await prisma.user.findUnique({ where: { email: profile.email } })
-  }
-
-  if (user) {
-    return prisma.user.update({
-      where: { id: user.id },
-      data: {
-        vkId: profile.vkId,
-        name: user.name || profile.name,
-        avatar: user.avatar || profile.avatar,
-        city: user.city || profile.city,
-        email: user.email || profile.email,
-      },
-    })
-  }
-
-  return prisma.user.create({
-    data: {
-      vkId: profile.vkId,
-      email: profile.email,
-      phone: profile.phone,
-      name: profile.name,
-      avatar: profile.avatar,
-      city: profile.city,
-    },
-  })
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as VkPayload
@@ -125,7 +93,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "VK вернул данные без профиля" }, { status: 400 })
     }
 
-    const user = await findOrCreateUser(profile)
+    const user = await findOrCreateOAuthUser({
+      provider: "vk",
+      providerId: profile.vkId,
+      email: profile.email,
+      phone: profile.phone,
+      name: profile.name,
+      avatar: profile.avatar,
+      city: profile.city,
+    })
 
     if (user.isBanned) {
       return NextResponse.json({ error: "Аккаунт заблокирован" }, { status: 403 })

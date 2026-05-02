@@ -1,82 +1,88 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { signToken, COOKIE_NAME, COOKIE_OPTIONS } from '@/lib/auth'
+import { NextRequest, NextResponse } from "next/server"
+import { signToken, COOKIE_NAME, COOKIE_OPTIONS } from "@/lib/auth"
+import { findOrCreateOAuthUser } from "@/lib/oauth-users"
+
+type YandexPhone = {
+  number?: string
+}
+
+type YandexUser = {
+  id?: string | number
+  login?: string
+  real_name?: string
+  display_name?: string
+  default_email?: string
+  default_avatar_id?: string
+  default_phone?: YandexPhone
+  phones?: YandexPhone[]
+}
+
+function safeNext(value: string | null) {
+  return value?.startsWith("/") ? value : "/profile"
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
-  const code = searchParams.get('code')
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://nashlo.ru'
+  const code = searchParams.get("code")
+  const next = safeNext(searchParams.get("state"))
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://nashlo.ru"
 
   if (!code) {
     return NextResponse.redirect(`${baseUrl}/login?error=yandex_denied`)
   }
 
   try {
-    const redirectUri = `${baseUrl}/api/auth/yandex/callback`
+    const clientId = process.env.YANDEX_CLIENT_ID
+    const clientSecret = process.env.YANDEX_CLIENT_SECRET
 
-    // Обмен кода на токен
-    const tokenRes = await fetch('https://oauth.yandex.ru/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    if (!clientId || !clientSecret) {
+      return NextResponse.redirect(`${baseUrl}/login?error=yandex_error`)
+    }
+
+    const redirectUri = `${baseUrl}/api/auth/yandex/callback`
+    const tokenRes = await fetch("https://oauth.yandex.ru/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        grant_type: 'authorization_code',
+        grant_type: "authorization_code",
         code,
-        client_id: process.env.YANDEX_CLIENT_ID!,
-        client_secret: process.env.YANDEX_CLIENT_SECRET!,
+        client_id: clientId,
+        client_secret: clientSecret,
         redirect_uri: redirectUri,
       }),
+      cache: "no-store",
     })
 
     const tokenData = await tokenRes.json()
 
-    if (tokenData.error) {
-      console.error('Yandex token error:', tokenData)
+    if (tokenData.error || !tokenData.access_token) {
+      console.error("Yandex token error:", tokenData)
       return NextResponse.redirect(`${baseUrl}/login?error=yandex_token`)
     }
 
-    // Получаем данные пользователя
-    const userRes = await fetch('https://login.yandex.ru/info?format=json', {
+    const userRes = await fetch("https://login.yandex.ru/info?format=json", {
       headers: { Authorization: `OAuth ${tokenData.access_token}` },
+      cache: "no-store",
     })
-    const yandexUser = await userRes.json()
+    const yandexUser = (await userRes.json()) as YandexUser
 
     if (!yandexUser.id) {
       return NextResponse.redirect(`${baseUrl}/login?error=yandex_user`)
     }
 
-    const yandexId = String(yandexUser.id)
-    const name = yandexUser.real_name || yandexUser.login || ''
-    const email = yandexUser.default_email || null
     const avatar = yandexUser.default_avatar_id
       ? `https://avatars.yandex.net/get-yapic/${yandexUser.default_avatar_id}/islands-200`
       : null
+    const phone = yandexUser.default_phone?.number || yandexUser.phones?.[0]?.number || null
 
-    // Ищем или создаём пользователя
-    let user = await prisma.user.findUnique({ where: { yandexId } })
-
-    if (!user && email) {
-      user = await prisma.user.findUnique({ where: { email } })
-    }
-
-    if (user) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          yandexId,
-          name: user.name || name,
-          avatar: user.avatar || avatar,
-        },
-      })
-    } else {
-      user = await prisma.user.create({
-        data: {
-          yandexId,
-          email,
-          name,
-          avatar,
-        },
-      })
-    }
+    const user = await findOrCreateOAuthUser({
+      provider: "yandex",
+      providerId: String(yandexUser.id),
+      email: yandexUser.default_email || null,
+      phone,
+      name: yandexUser.real_name || yandexUser.display_name || yandexUser.login || "Пользователь Яндекса",
+      avatar,
+    })
 
     if (user.isBanned) {
       return NextResponse.redirect(`${baseUrl}/login?error=banned`)
@@ -84,15 +90,15 @@ export async function GET(request: NextRequest) {
 
     const token = await signToken({
       userId: user.id,
-      phone: user.phone || '',
+      phone: user.phone || "",
       role: user.role,
     })
 
-    const response = NextResponse.redirect(`${baseUrl}/profile`)
+    const response = NextResponse.redirect(`${baseUrl}${next}`)
     response.cookies.set(COOKIE_NAME, token, COOKIE_OPTIONS)
     return response
   } catch (error) {
-    console.error('Yandex OAuth error:', error)
+    console.error("Yandex OAuth error:", error)
     return NextResponse.redirect(`${baseUrl}/login?error=yandex_error`)
   }
 }
