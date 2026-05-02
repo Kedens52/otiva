@@ -33,7 +33,9 @@ export default function FeedPage() {
     load()
   }, [])
 
-  const mobileCats = showAllCats ? CATEGORY_META : CATEGORY_META.slice(0, 8)
+  const popularCats = CATEGORY_META.filter((c) => c.slug !== "other").slice(0, 12)
+  const mobileCats = showAllCats ? popularCats : popularCats.slice(0, 8)
+  const categoryTitle = (slug: string, title: string) => slug === "free" ? "Бесплатно" : title
 
   return (
     <main className="bg-white">
@@ -46,25 +48,25 @@ export default function FeedPage() {
                   <Link key={c.slug} href={c.href} onClick={() => trackUserInterest({ category: c.slug, weight: 3 })}
                     className="group flex items-center gap-3 overflow-hidden rounded-2xl bg-zinc-100 px-3 py-3 transition active:scale-[0.98] hover:bg-zinc-200">
                     <img src={`/categories/${c.slug}.svg`} alt="" className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-sm" />
-                    <span className="line-clamp-2 text-sm font-semibold leading-snug text-zinc-950">{c.title}</span>
+                    <span className="line-clamp-2 text-sm font-semibold leading-snug text-zinc-950">{categoryTitle(c.slug, c.title)}</span>
                   </Link>
                 ))}
               </div>
-              {CATEGORY_META.length > 8 && (
+              {popularCats.length > 8 && (
                 <button
                   onClick={() => setShowAllCats((v) => !v)}
                   className="mt-2.5 w-full rounded-2xl border border-zinc-200 py-2.5 text-sm font-medium text-zinc-500 hover:bg-zinc-50 transition">
-                  {showAllCats ? "Скрыть категории" : "Все категории (" + CATEGORY_META.length + ")"}
+                  {showAllCats ? "Скрыть категории" : "Все популярные (" + popularCats.length + ")"}
                 </button>
               )}
             </div>
 
             <div className="hidden grid-cols-2 gap-3 lg:grid lg:grid-cols-4">
-              {CATEGORY_META.map((c) => (
+              {popularCats.map((c) => (
                 <Link key={c.slug} href={c.href} onClick={() => trackUserInterest({ category: c.slug, weight: 3 })}
-                  className="group flex min-h-[7rem] min-w-0 flex-col justify-between overflow-hidden rounded-3xl bg-zinc-100 p-3 transition hover:-translate-y-0.5 hover:bg-zinc-200 sm:min-h-32 sm:p-4">
-                  <h2 className="line-clamp-2 text-sm font-semibold leading-5 text-zinc-950 sm:text-base">{c.title}</h2>
-                  <img src={`/categories/${c.slug}.svg`} alt="" className="mx-auto h-12 w-12 shrink-0 rounded-xl object-cover shadow-sm transition group-hover:scale-105 sm:h-16 sm:w-16 sm:rounded-2xl" />
+                  className="group flex min-h-[96px] min-w-0 items-center gap-3 overflow-hidden rounded-3xl bg-zinc-100 p-3 transition hover:-translate-y-0.5 hover:bg-zinc-200">
+                  <img src={`/categories/${c.slug}.svg`} alt="" className="h-14 w-14 shrink-0 rounded-2xl object-cover shadow-sm transition group-hover:scale-105" />
+                  <h2 className="min-w-0 truncate text-base font-semibold leading-5 text-zinc-950">{categoryTitle(c.slug, c.title)}</h2>
                 </Link>
               ))}
             </div>
