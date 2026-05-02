@@ -148,7 +148,7 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:items-center sm:p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -156,7 +156,7 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
       />
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-[420px] overflow-hidden rounded-3xl bg-white shadow-2xl mx-4">
+      <div className="relative z-10 max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1.5rem)] w-full max-w-[420px] overflow-y-auto rounded-3xl bg-white shadow-2xl">
         {/* Кнопка закрытия */}
         <button
           onClick={onClose}
@@ -217,7 +217,7 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
               <button
                 type="submit"
                 disabled={loading}
-                className="h-12 w-auto rounded-2xl bg-blue-500 px-8 text-sm font-semibold text-white transition hover:bg-blue-600 disabled:opacity-50"
+                className="h-12 w-full rounded-2xl bg-blue-500 px-8 text-sm font-semibold text-white transition hover:bg-blue-600 disabled:opacity-50 sm:w-auto"
               >
                 {loading ? "Отправляем…" : "Получить код"}
               </button>
@@ -237,7 +237,7 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
                 autoFocus
               />
               {error && <p className="text-sm text-red-500">{error}</p>}
-              <div className="flex gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   type="submit"
                   disabled={loading || code.length !== 6}

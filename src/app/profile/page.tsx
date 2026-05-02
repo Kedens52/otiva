@@ -185,7 +185,7 @@ export default function ProfilePage() {
     const interest = views > 0 ? Math.round(((favorites + opens) / views) * 100) : 0
 
     return (
-      <article className="grid gap-4 rounded-[28px] border border-zinc-200 bg-white p-3 shadow-sm md:grid-cols-[160px_minmax(0,1fr)_260px] md:p-4">
+      <article className="grid min-w-0 gap-4 rounded-[28px] border border-zinc-200 bg-white p-3 shadow-sm md:grid-cols-[160px_minmax(0,1fr)_260px] md:p-4">
         <Link
           href={`/listings/${listing.id}`}
           onClick={() => trackListingOpen(listing.id)}
@@ -228,9 +228,9 @@ export default function ProfilePage() {
               { label: "В избранном", value: statNumber(favorites) },
               { label: "Переходы", value: statNumber(opens) },
             ].map((item) => (
-              <div key={item.label} className="rounded-2xl bg-zinc-50 p-3">
+              <div key={item.label} className="min-w-0 rounded-2xl bg-zinc-50 p-2.5 sm:p-3">
                 <p className="text-base font-bold text-zinc-950">{item.value}</p>
-                <p className="mt-0.5 text-[11px] text-zinc-400">{item.label}</p>
+                <p className="mt-0.5 truncate text-[10px] text-zinc-400 sm:text-[11px]">{item.label}</p>
               </div>
             ))}
           </div>
@@ -258,7 +258,7 @@ export default function ProfilePage() {
 
   return (
     <main className="pb-28 lg:pb-12">
-      <div className="mx-auto max-w-7xl px-4 py-5 lg:py-10">
+      <div className="mx-auto min-w-0 max-w-7xl px-4 py-5 lg:py-10">
         <div className="grid gap-8 lg:grid-cols-[300px_minmax(0,1fr)]">
           <aside className="lg:sticky lg:top-24 lg:h-fit">
             <section className="rounded-[32px] border border-zinc-200 bg-white p-5 shadow-sm">

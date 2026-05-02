@@ -20,7 +20,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
       <div className={isChatApp ? "hidden lg:block" : ""}>
         <Header />
       </div>
-      <main className={`flex-1 overflow-x-hidden ${isChatApp ? "pb-0" : "pb-24 lg:pb-0"}`}>
+      <main className={`flex-1 min-w-0 overflow-x-hidden ${isChatApp ? "pb-0" : "pb-36 lg:pb-0"}`}>
         {!isChatApp && <Breadcrumbs />}
         {children}
       </main>

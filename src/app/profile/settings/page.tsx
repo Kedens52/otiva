@@ -140,13 +140,13 @@ export default function ProfileSettingsPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 pb-28 lg:py-10 lg:pb-12">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="mb-6 flex min-w-0 items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
           <Link href="/profile" className="flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-600 hover:bg-zinc-200">
             ←
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-950 lg:text-4xl">Управление профилем</h1>
+          <div className="min-w-0">
+            <h1 className="truncate text-2xl font-bold tracking-tight text-zinc-950 lg:text-4xl">Управление профилем</h1>
             <p className="mt-1 text-sm text-zinc-500">Эти данные помогают покупателям понимать, с кем они общаются.</p>
           </div>
         </div>

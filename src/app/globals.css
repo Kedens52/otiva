@@ -54,6 +54,16 @@
 }
 
 @layer base {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
   * {
     @apply border-border;
   }
@@ -65,6 +75,13 @@
     text-rendering: geometricPrecision;
   }
 
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+
   h1,
   h2,
   h3,
@@ -74,6 +91,14 @@
   textarea,
   select {
     font-family: var(--font-marketplace);
+  }
+}
+
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
   }
 }
 
