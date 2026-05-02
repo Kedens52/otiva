@@ -50,7 +50,7 @@ function LoginForm() {
         redirectUrl: "https://nashlo.ru/api/auth/vk/callback",
         responseMode: VKID.ConfigResponseMode.Callback,
         source: VKID.ConfigSource.LOWCODE,
-        scope: "",
+        scope: "email phone",
       })
 
       const oneTap = new VKID.OneTap()
