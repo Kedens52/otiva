@@ -402,31 +402,64 @@ export function Header() {
         <input id="catalog-menu-toggle" type="checkbox" className="peer sr-only" />
 
         {/* ── MOBILE LAYOUT (< lg) ────────────────────────── */}
-        <div className="px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.75rem)] lg:hidden">
-          <div className="flex items-center gap-2">
-            <form onSubmit={handleSearch} className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 shadow-inner shadow-zinc-950/[0.03]">
-              <span className="text-zinc-400">⌕</span>
-              <input
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-400"
-                placeholder={`Поиск в ${cityLabel}`}
-                aria-label="Поиск по объявлениям"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button type="submit" className="shrink-0 rounded-lg bg-zinc-950 px-2 py-0.5 text-xs font-medium text-white">
-                  Найти
-                </button>
-              )}
-            </form>
+        <div className="px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] lg:hidden">
+          {/* Row 1: Logo + city + create */}
+          <div className="flex items-center gap-2 mb-2.5">
+            <Logo compact />
+            <div className="flex-1" />
             <button
               type="button"
               onClick={() => setIsCityOpen((v) => !v)}
-              className="flex h-11 max-w-[112px] shrink-0 items-center gap-1 rounded-2xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 shadow-sm"
+              className="flex h-9 max-w-[100px] shrink-0 items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-700"
             >
               <span className="text-[hsl(var(--nashlo-orange))] text-sm leading-none">⌖</span>
               <span className="truncate">{cityLabel}</span>
             </button>
+            <Link
+              href="/create"
+              className="flex h-9 shrink-0 items-center gap-1 rounded-xl bg-[hsl(var(--nashlo-orange))] px-3 text-xs font-semibold text-white shadow-sm"
+            >
+              <span className="text-base leading-none">+</span>
+              <span>Разместить</span>
+            </Link>
+          </div>
+
+          {/* Row 2: Search */}
+          <form onSubmit={handleSearch} className="flex h-11 min-w-0 items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 shadow-inner shadow-zinc-950/[0.03]">
+            <span className="text-zinc-400">⌕</span>
+            <input
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-400"
+              placeholder={`Поиск в ${cityLabel}`}
+              aria-label="Поиск по объявлениям"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button type="submit" className="shrink-0 rounded-lg bg-zinc-950 px-2 py-0.5 text-xs font-medium text-white">
+                Найти
+              </button>
+            )}
+          </form>
+
+          {/* Row 3: Category chips */}
+          <div className="mt-2 -mx-4 flex gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <label
+              htmlFor="catalog-menu-toggle"
+              className="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-zinc-950 px-3 text-xs font-semibold text-white"
+            >
+              <span className="text-sm leading-none">▦</span>
+              <span>Каталог</span>
+            </label>
+            {categoryMenu.map((cat) => (
+              <Link
+                key={cat.title}
+                href={cat.href}
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 active:bg-zinc-100"
+              >
+                <span className="text-base leading-none">{cat.icon}</span>
+                <span>{cat.title}</span>
+              </Link>
+            ))}
           </div>
 
           {isCityOpen && (
@@ -782,3 +815,5 @@ export function Header() {
     </>
   )
 }
+
+           
