@@ -3,10 +3,12 @@
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { Logo } from "@/components/layout/Logo"
+import { safeAdminRedirectPath } from "@/lib/admin/safe-redirect"
 
 export default function AdminLoginClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [login, setLogin] = useState("")
   const [code, setCode] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -15,10 +17,14 @@ export default function AdminLoginClient() {
     setError("")
     setLoading(true)
 
-    const response = await fetch("/api/admin/session", {
+    const response = await fetch("/api/admin/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({
+        login,
+        code,
+        next: searchParams.get("next") || undefined,
+      }),
     })
 
     setLoading(false)
@@ -29,7 +35,12 @@ export default function AdminLoginClient() {
       return
     }
 
-    router.push(searchParams.get("next") || "/admin/moderation")
+    const data = await response.json().catch(() => null)
+    const target = safeAdminRedirectPath(
+      typeof data?.redirectTo === "string" ? data.redirectTo : null,
+      safeAdminRedirectPath(searchParams.get("next"), "/admin/dashboard"),
+    )
+    router.push(target)
     router.refresh()
   }
 
@@ -41,11 +52,28 @@ export default function AdminLoginClient() {
             <Logo />
           </div>
           <h1 className="mt-8 text-3xl font-semibold tracking-tight text-zinc-950">
-            Вход разработчика
+            Вход в админ-панель
           </h1>
           <p className="mt-2 text-sm leading-6 text-zinc-500">
-            Админ-панель скрыта от пользователей. Введите код разработчика для доступа к модерации.
+            Введите логин сотрудника и персональный код доступа.
           </p>
+
+          <label className="mt-6 block">
+            <span className="text-sm font-medium text-zinc-600">Логин</span>
+            <input
+              value={login}
+              onChange={(event) => {
+                setLogin(event.target.value)
+                setError("")
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") submit()
+              }}
+              className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))]"
+              placeholder="Например: owner"
+              autoFocus
+            />
+          </label>
 
           <label className="mt-6 block">
             <span className="text-sm font-medium text-zinc-600">Код доступа</span>
@@ -61,14 +89,13 @@ export default function AdminLoginClient() {
               className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))]"
               placeholder="Введите код"
               type="password"
-              autoFocus
             />
           </label>
 
           <button
             type="button"
             onClick={submit}
-            disabled={loading || code.trim().length === 0}
+            disabled={loading || code.trim().length === 0 || login.trim().length === 0}
             className="mt-4 h-12 w-full rounded-2xl bg-[hsl(var(--nashlo-orange))] px-5 text-sm font-semibold text-white transition hover:bg-[hsl(var(--nashlo-orange)/0.9)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Проверяем..." : "Открыть админ-панель"}
@@ -81,7 +108,7 @@ export default function AdminLoginClient() {
           )}
 
           <p className="mt-5 text-xs leading-5 text-zinc-400">
-            Доступ только для владельца проекта. Код хранится в переменных окружения.
+            Вход доступен только активным сотрудникам с назначенной ролью.
           </p>
         </div>
       </section>

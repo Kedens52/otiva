@@ -1,6 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
+import { getAdminCsrfFromDocument } from "@/lib/admin/csrf-client"
+import { isAutoReplyPayload, isSystemSupportPayload } from "@/lib/support/payload"
 
 type User = {
   id: string
@@ -14,17 +17,47 @@ type User = {
 type Message = {
   id: string
   text: string
+  images?: string[]
   createdAt: string
+  supportPayload?: unknown
   sender: { id: string; name: string | null; role: string }
 }
 
 type SupportConversation = {
   id: string
   updatedAt: string
+  supportWorkflowStatus?: string
+  operatorNeeded?: boolean
+  lastAutoReplyCatalogId?: string | null
+  lastAutoReplyAction?: string | null
   client: User | null
   messages: Message[]
   lastMessage: Message | null
   unreadCount: number
+}
+
+function workflowLabel(status?: string, operator?: boolean) {
+  if (operator || status === "WAITING_OPERATOR") return "Ждёт оператора"
+  if (status === "RESOLVED_AUTO") return "Закрыто: автоответ"
+  return "Активно"
+}
+
+function lastAutoReplySummary(messages: Message[]): string | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const p = messages[i]?.supportPayload
+    if (isAutoReplyPayload(p)) return `${p.title} (${p.autoReplyId})`
+  }
+  return null
+}
+
+function lastAutoReplyFeedback(messages: Message[]): string | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const p = messages[i]?.supportPayload
+    if (isAutoReplyPayload(p) && p.actionState !== "pending") {
+      return p.actionState === "helpful" ? "Помогло" : "Не помогло → оператор"
+    }
+  }
+  return null
 }
 
 function timeLabel(value: string) {
@@ -77,14 +110,22 @@ export default function AdminSupportPage() {
     try {
       const res = await fetch("/api/admin/support", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": getAdminCsrfFromDocument() },
         body: JSON.stringify({ conversationId: selected.id, text: trimmed }),
       })
       if (res.ok) {
         const data = await res.json()
         setConversations((current) => current.map((conversation) => (
           conversation.id === selected.id
-            ? { ...conversation, messages: [...conversation.messages, data.message], lastMessage: data.message, updatedAt: data.message.createdAt, unreadCount: 0 }
+            ? {
+                ...conversation,
+                messages: [...conversation.messages, data.message],
+                lastMessage: data.message,
+                updatedAt: data.message.createdAt,
+                unreadCount: 0,
+                operatorNeeded: false,
+                supportWorkflowStatus: "ACTIVE",
+              }
             : conversation
         )))
       }
@@ -138,6 +179,9 @@ export default function AdminSupportPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="min-w-0 flex-1 truncate font-semibold text-zinc-950">{client?.name || "Пользователь"}</p>
+                        {(conversation.operatorNeeded || conversation.supportWorkflowStatus === "WAITING_OPERATOR") && (
+                          <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">Очередь</span>
+                        )}
                         {conversation.unreadCount > 0 && (
                           <span className="rounded-full bg-[hsl(var(--nashlo-orange))] px-2 py-0.5 text-xs font-bold text-white">{conversation.unreadCount}</span>
                         )}
@@ -164,11 +208,72 @@ export default function AdminSupportPage() {
                   <span>{selected.client?.phone || "телефон не указан"}</span>
                   <span>{selected.client?.email || "почта не указана"}</span>
                 </div>
+                <div className="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+                  <p>
+                    <span className="font-semibold text-zinc-800">Статус:</span>{" "}
+                    {workflowLabel(selected.supportWorkflowStatus, selected.operatorNeeded)}
+                  </p>
+                  <p className="mt-1">
+                    <span className="font-semibold text-zinc-800">Последний автоответ:</span>{" "}
+                    {lastAutoReplySummary(selected.messages) ?? (selected.lastAutoReplyCatalogId ? `id: ${selected.lastAutoReplyCatalogId}` : "—")}
+                  </p>
+                  <p className="mt-1">
+                    <span className="font-semibold text-zinc-800">Реакция пользователя:</span>{" "}
+                    {lastAutoReplyFeedback(selected.messages)
+                      ?? (selected.lastAutoReplyAction === "HELPFUL"
+                        ? "Помогло"
+                        : selected.lastAutoReplyAction === "ESCALATED"
+                          ? "Не помогло → оператор"
+                          : "—")}
+                  </p>
+                </div>
               </header>
 
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-zinc-50 px-5 py-5">
                 {selected.messages.map((message) => {
                   const fromSupport = message.sender.role === "MODERATOR" || message.sender.role === "ADMIN"
+                  const pl = message.supportPayload
+
+                  if (fromSupport && isAutoReplyPayload(pl)) {
+                    return (
+                      <div key={message.id} className="flex justify-end">
+                        <div className="max-w-[72%] rounded-[22px] rounded-br-md bg-zinc-950 px-4 py-2.5 text-left text-white shadow-sm">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-white/50">Автоответ</p>
+                          <p className="mt-1 text-sm font-semibold">{pl.title}</p>
+                          <p className="mt-2 text-sm leading-snug text-white/85">{pl.teaser}</p>
+                          <p className="mt-2 text-sm leading-snug text-white">{pl.body}</p>
+                          {pl.links?.length ? (
+                            <ul className="mt-2 space-y-1">
+                              {pl.links.map((link) => (
+                                <li key={link.href + link.label}>
+                                  <Link href={link.href} className="text-sm font-medium text-[hsl(var(--nashlo-orange))] underline underline-offset-2">
+                                    {link.label}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                          <p className="mt-2 text-[11px] text-white/50">
+                            {pl.actionState === "pending" ? "Ожидает реакции пользователя" : pl.actionState === "helpful" ? "Пользователь: помогло" : "Пользователь: не помогло"}
+                          </p>
+                          <p className="mt-1 text-[11px] text-white/40">{timeLabel(message.createdAt)}</p>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  if (fromSupport && isSystemSupportPayload(pl)) {
+                    return (
+                      <div key={message.id} className="flex justify-end">
+                        <div className="max-w-[72%] rounded-[22px] rounded-br-md bg-zinc-800 px-4 py-2.5 text-left text-white shadow-sm">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-white/45">Системное сообщение</p>
+                          <p className="mt-1 text-sm leading-snug text-white/90">{message.text}</p>
+                          <p className="mt-1 text-[11px] text-white/45">{timeLabel(message.createdAt)}</p>
+                        </div>
+                      </div>
+                    )
+                  }
+
                   return (
                     <div key={message.id} className={`flex ${fromSupport ? "justify-end" : "justify-start"}`}>
                       <div className={`max-w-[72%] rounded-[22px] px-4 py-2.5 shadow-sm ${fromSupport ? "rounded-br-md bg-zinc-950 text-white" : "rounded-bl-md bg-white text-zinc-950"}`}>

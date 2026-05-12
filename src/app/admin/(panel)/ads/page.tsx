@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { AdminTopBannerManager } from "@/components/admin/AdminTopBannerManager"
 import { adSlots, createDefaultAd, loadManagedAds, saveManagedAds, type AdSlotId, type ManagedAd } from "@/lib/ad-store"
 
 function today() {
@@ -144,6 +145,10 @@ export default function AdminAdsPage() {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="mt-8">
+        <AdminTopBannerManager />
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
