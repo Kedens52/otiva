@@ -30,7 +30,7 @@ Write-Host "Uploaded" -ForegroundColor Green
 
 # Step 3: Build on server
 Write-Host "Building on server..." -ForegroundColor Yellow
-$cmd = 'set -e; mkdir -p /root/OTIVA; tar -xzf /tmp/otiva_deploy.tar.gz -C /root/OTIVA; rm /tmp/otiva_deploy.tar.gz; cd /root/OTIVA; npm install --legacy-peer-deps --silent; npx prisma generate; npx prisma migrate deploy; npm run build; pm2 restart otiva --update-env 2>/dev/null || pm2 start npm --name otiva -- start; pm2 status'
+$cmd = 'set -e; mkdir -p /root/OTIVA; find /root/OTIVA -mindepth 1 -maxdepth 1 ! -name ''.env'' ! -name ''.env.local'' ! -name ''.env.production'' ! -name ''public'' -exec rm -rf {} +; tar -xzf /tmp/otiva_deploy.tar.gz -C /root/OTIVA; rm /tmp/otiva_deploy.tar.gz; cd /root/OTIVA; npm install --legacy-peer-deps --silent; npx prisma generate; npx prisma migrate resolve --rolled-back "20260512140000_support_auto_replies" 2>/dev/null || true; npx prisma migrate deploy; npm run build; pm2 restart otiva --update-env 2>/dev/null || pm2 start npm --name otiva -- start; pm2 status'
 & ssh -o StrictHostKeyChecking=accept-new $SERVER $cmd
 if ($LASTEXITCODE -ne 0) { Write-Host "Build error" -ForegroundColor Red; exit 1 }
 

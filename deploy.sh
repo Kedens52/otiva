@@ -2,12 +2,15 @@
 # ============================================================
 # OTIVA / Нашло — Deploy script
 # Запускать из корня проекта: bash deploy.sh
+# Если heredoc падает с «unexpected end of file» после CRLF: dos2unix deploy.sh
 # ============================================================
 
 SERVER="root@185.154.193.6"
 REMOTE_PATH="/root/OTIVA"
 LOCAL_PATH="$(cd "$(dirname "$0")" && pwd)"
 SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=30"
+# Same path on server after scp; local tarball lives under MSYS /tmp (Git Bash) or /tmp (Unix).
+DEPLOY_ARCHIVE="/tmp/otiva_deploy.tar.gz"
 
 echo "🚀 Начинаем деплой на $SERVER:$REMOTE_PATH"
 echo ""
@@ -21,7 +24,7 @@ tar --exclude=".next" \
     --exclude=".env" \
     --exclude=".env.local" \
     --exclude="deploy.sh" \
-    -czf /tmp/otiva_deploy.tar.gz -C "$LOCAL_PATH" .
+    -czf "$DEPLOY_ARCHIVE" -C "$LOCAL_PATH" .
 
 if [ $? -ne 0 ]; then
   echo "❌ Ошибка при упаковке файлов"
@@ -29,7 +32,14 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "📤 Загружаем архив на сервер..."
-scp $SSH_OPTS /tmp/otiva_deploy.tar.gz "$SERVER:/tmp/otiva_deploy.tar.gz"
+# Git Bash: MSYS rewrites user:/tmp/... for Windows scp.exe; disable conversion and pass a Windows path for the local file.
+DEPLOY_ARCHIVE_LOCAL="$DEPLOY_ARCHIVE"
+if command -v cygpath >/dev/null 2>&1; then
+  DEPLOY_ARCHIVE_LOCAL="$(cygpath -w "$DEPLOY_ARCHIVE")"
+  MSYS2_ARG_CONV_EXCL='*' scp $SSH_OPTS "$DEPLOY_ARCHIVE_LOCAL" "$SERVER:$DEPLOY_ARCHIVE"
+else
+  scp $SSH_OPTS "$DEPLOY_ARCHIVE_LOCAL" "$SERVER:$DEPLOY_ARCHIVE"
+fi
 
 if [ $? -ne 0 ]; then
   echo "❌ Ошибка при загрузке файлов"
@@ -50,6 +60,10 @@ ssh $SSH_OPTS "$SERVER" << 'REMOTE'
   mkdir -p /root/OTIVA
 
   echo ""
+  echo "=== Очищаем дерево проекта (кроме .env* и public/) — иначе tar оставляет удалённые файлы и ломает Next.js; public/ хранит uploads вне архива ==="
+  find /root/OTIVA -mindepth 1 -maxdepth 1 ! -name ".env" ! -name ".env.local" ! -name ".env.production" ! -name "public" -exec rm -rf {} +
+
+  echo ""
   echo "=== Распаковываем файлы ==="
   tar -xzf /tmp/otiva_deploy.tar.gz -C /root/OTIVA
   rm /tmp/otiva_deploy.tar.gz
@@ -65,6 +79,8 @@ ssh $SSH_OPTS "$SERVER" << 'REMOTE'
   echo ""
   echo "=== Prisma: генерация клиента и применение миграций ==="
   npx prisma generate
+  echo "Prisma: сброс записи об упавшей миграции 20260512140000_support_auto_replies (P3009), если есть"
+  npx prisma migrate resolve --rolled-back "20260512140000_support_auto_replies" 2>/dev/null || true
   npx prisma migrate deploy
 
   echo ""
