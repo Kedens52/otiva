@@ -40,11 +40,14 @@ echo ""
 echo "✅ Файлы загружены"
 echo ""
 
-# 2. На сервере: установить зависимости, мигрировать БД, билдить, перезапустить
+# 2. На сервере: создать папку, распаковать, установить, билдить, перезапустить
 echo "🔧 Запускаем сборку на сервере..."
 ssh $SSH_OPTS "$SERVER" << 'REMOTE'
   set -e
-  cd /root/OTIVA
+
+  echo ""
+  echo "=== Создаём папку проекта (если не существует) ==="
+  mkdir -p /root/OTIVA
 
   echo ""
   echo "=== Распаковываем файлы ==="
@@ -52,24 +55,29 @@ ssh $SSH_OPTS "$SERVER" << 'REMOTE'
   rm /tmp/otiva_deploy.tar.gz
 
   echo ""
+  echo "=== Переходим в папку проекта ==="
+  cd /root/OTIVA
+
+  echo ""
   echo "=== npm install ==="
   npm install --legacy-peer-deps
 
   echo ""
-  echo "=== Prisma db push (sync schema → DB) ==="
-  npx prisma db push --accept-data-loss
+  echo "=== Prisma: генерация клиента и применение миграций ==="
+  npx prisma generate
+  npx prisma migrate deploy
 
   echo ""
   echo "=== Seed categories ==="
   npx ts-node --compiler-options '{"module":"CommonJS"}' prisma/seed.ts 2>/dev/null || echo "(seed skipped)"
 
   echo ""
-  echo "=== npm build (includes prisma generate) ==="
+  echo "=== npm build ==="
   npm run build
 
   echo ""
   echo "=== Перезапуск PM2 ==="
-  pm2 restart otiva --update-env
+  pm2 restart otiva --update-env 2>/dev/null || pm2 start npm --name otiva -- start
 
   echo ""
   echo "=== Статус ==="
