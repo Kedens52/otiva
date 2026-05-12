@@ -1,8 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { z } from 'zod'
-import { Prisma, type ListingStatus } from '@prisma/client'
+import { Prisma } from '@prisma/client'
+import { validateCategoryAttributes } from '@/lib/validators/categoryAttributes'
+import { moderateListing } from '@/lib/listing-moderation'
+import { syncUserTrustSnapshot, maxFreeListingsForTier, needsModerationForHighRisk } from '@/lib/trust-tier'
+import { getListings } from '@/lib/listings/get-listings'
+
+export const dynamic = 'force-dynamic'
 
 const createSchema = z.object({
   title: z.string().min(3).max(100),
@@ -18,82 +24,13 @@ const createSchema = z.object({
   attributes: z.record(z.unknown()).optional(),
 })
 
-// Basic content moderation
-const SPAM_PATTERNS = [
-  /(.)\1{6,}/i,           // repeated chars: aaaaaaa
-  /[A-ZА-ЯЁ]{10,}/,      // too many caps
-  /\b(казино|casino|займ онлайн|кредит без|быстрые деньги)\b/i,
-]
-function isSpam(text: string): boolean {
-  return SPAM_PATTERNS.some((p) => p.test(text))
-}
-
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = request.nextUrl
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
-    const pageSize = Math.min(50, parseInt(searchParams.get('pageSize') || '20'))
-    const categorySlug = searchParams.get('category')
-    const city = searchParams.get('city')
-    const query = searchParams.get('q')
-    const priceMin = searchParams.get('priceMin') ? parseInt(searchParams.get('priceMin')!) : undefined
-    const priceMax = searchParams.get('priceMax') ? parseInt(searchParams.get('priceMax')!) : undefined
-    const sortBy = searchParams.get('sortBy') || 'createdAt'
-    const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc'
-
-    const where: Record<string, unknown> = {
-      status: 'ACTIVE' as ListingStatus,
-    }
-
-    if (categorySlug) where.category = { slug: categorySlug }
-    if (city) where.city = city
-    if (query) {
-      where.OR = [
-        { title: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
-      ]
-    }
-    if (priceMin !== undefined || priceMax !== undefined) {
-      where.price = {}
-      if (priceMin !== undefined) (where.price as Record<string, number>).gte = priceMin
-      if (priceMax !== undefined) (where.price as Record<string, number>).lte = priceMax
-    }
-
-    const validSortFields = ['createdAt', 'price', 'views']
-    const orderByField = validSortFields.includes(sortBy) ? sortBy : 'createdAt'
-
-    const [items, total] = await Promise.all([
-      prisma.listing.findMany({
-        where,
-        include: {
-          seller: {
-            select: {
-              id: true,
-              name: true,
-              avatar: true,
-              phone: true,
-              rating: true,
-              reviewCount: true,
-              isVerified: true,
-            },
-          },
-          category: true,
-          _count: { select: { favorites: true } },
-        },
-        orderBy: { [orderByField]: sortOrder },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      prisma.listing.count({ where }),
-    ])
-
-    return NextResponse.json({
-      items,
-      total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
+    const user = await getCurrentUser()
+    const data = await getListings(prisma, request.nextUrl.searchParams, {
+      currentUserId: user?.id ?? null,
     })
+    return NextResponse.json(data)
   } catch (error) {
     console.error('listings GET error:', error)
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
@@ -110,8 +47,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = createSchema.parse(body)
 
-    if (isSpam(data.title) || isSpam(data.description)) {
-      return NextResponse.json({ error: 'Объявление не прошло проверку. Убедитесь, что текст написан нормально.' }, { status: 400 })
+    const attributesValidation = validateCategoryAttributes(
+      data.categorySlug,
+      data.attributes as Record<string, unknown> | undefined,
+    )
+    if (!attributesValidation.ok) {
+      return NextResponse.json({ error: attributesValidation.error }, { status: 400 })
     }
 
     const category = await prisma.category.findUnique({
@@ -120,6 +61,76 @@ export async function POST(request: NextRequest) {
 
     if (!category) {
       return NextResponse.json({ error: 'Категория не найдена' }, { status: 400 })
+    }
+
+    const trustState = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { trustTier: true, accountRestricted: true },
+    })
+    if (!trustState) {
+      return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
+    }
+    if (trustState.accountRestricted) {
+      return NextResponse.json(
+        { error: 'Для безопасности это действие требует дополнительной проверки.' },
+        { status: 403 },
+      )
+    }
+    const maxActive = maxFreeListingsForTier(trustState.trustTier)
+    const activeCount = await prisma.listing.count({
+      where: { sellerId: user.id, status: { in: ['ACTIVE', 'MODERATION'] } },
+    })
+    if (activeCount >= maxActive) {
+      return NextResponse.json(
+        { error: 'Достигнут лимит активных объявлений. Завершите или архивируйте объявления либо выберите тариф.' },
+        { status: 403 },
+      )
+    }
+
+    const verdict = moderateListing({
+      title: data.title,
+      description: data.description,
+      price: data.price,
+      images: data.images,
+      categorySlug: data.categorySlug,
+      user,
+    })
+
+    const dupCount = await prisma.listing.count({
+      where: {
+        sellerId: user.id,
+        title: { equals: data.title.trim(), mode: 'insensitive' },
+        status: { notIn: ['ARCHIVED', 'SOLD'] },
+      },
+    })
+    let finalStatus = verdict.status
+    let finalReason = verdict.status === 'REJECTED' ? verdict.reason : verdict.status === 'MODERATION' ? verdict.reason : null
+    let moderationCode: string | null = null
+    if (dupCount > 0 && finalStatus === 'ACTIVE') {
+      finalStatus = 'MODERATION'
+      finalReason = 'Дублирующее объявление'
+      moderationCode = 'DUPLICATE_LISTING'
+    }
+
+    if (
+      data.categorySlug === 'cars' &&
+      data.price > 0 &&
+      data.price < 25_000 &&
+      finalStatus === 'ACTIVE'
+    ) {
+      finalStatus = 'MODERATION'
+      finalReason = finalReason
+        ? `${finalReason} Цена заметно ниже типичного диапазона для категории — проверьте корректность.`
+        : 'Цена заметно ниже типичного диапазона для категории; объявление отправлено на проверку.'
+      moderationCode = moderationCode ?? 'INCORRECT_PRICE'
+    }
+
+    const statusBeforeTier = finalStatus
+    finalStatus = needsModerationForHighRisk(trustState.trustTier, finalStatus)
+    if (statusBeforeTier === 'ACTIVE' && finalStatus === 'MODERATION') {
+      const suffix = 'Для безопасности объявление отправлено на проверку.'
+      const prev = finalReason ? String(finalReason) : ''
+      finalReason = prev.includes('Для безопасности') ? prev : prev ? `${prev} ${suffix}` : suffix
     }
 
     const listing = await prisma.listing.create({
@@ -134,7 +145,11 @@ export async function POST(request: NextRequest) {
         lat: data.lat,
         lng: data.lng,
         attributes: data.attributes as Prisma.InputJsonValue | undefined,
-        status: 'MODERATION',
+        status: finalStatus,
+        autoApproved: verdict.autoApproved && finalStatus === 'ACTIVE',
+        rejectionReason: finalStatus === 'ACTIVE' ? null : finalReason,
+        moderationReasonCode: moderationCode,
+        returnedForRevision: false,
         categoryId: category.id,
         sellerId: user.id,
       },
@@ -154,7 +169,19 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({ listing }, { status: 201 })
+    if (finalStatus === 'REJECTED') {
+      await prisma.moderationLog.create({
+        data: {
+          listingId: listing.id,
+          action: "REJECTED",
+          reason: finalReason,
+        },
+      }).catch(console.error)
+    }
+
+    void syncUserTrustSnapshot(user.id)
+
+    return NextResponse.json({ listing, moderation: { ...verdict, status: finalStatus, reason: finalReason } }, { status: 201 })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors[0].message }, { status: 400 })

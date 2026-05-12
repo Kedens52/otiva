@@ -4,11 +4,15 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { formatPrice, imageToneForCategory } from "@/lib/listing-types"
+import { moderationReasonByCode } from "@/lib/moderation-reasons"
 
 type Listing = {
   id: string; title: string; price: number
   city: string | null; status: string; createdAt: string
-  images: string[]; views: number
+  images: string[]; views: number; uniqueViews?: number; rejectionReason?: string | null
+  moderationReasonCode?: string | null
+  returnedForRevision?: boolean
+  autoApproved?: boolean; isPromoted?: boolean; promotedUntil?: string | null
   category: { slug: string; nameRu: string }
   _count?: { favorites: number }
 }
@@ -43,6 +47,9 @@ export default function MyListingsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState("")
   const [statusPending, setStatusPending] = useState<string | null>(null)
+  const [appealId, setAppealId] = useState<string | null>(null)
+  const [appealText, setAppealText] = useState("")
+  const [appealPending, setAppealPending] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -57,6 +64,24 @@ export default function MyListingsPage() {
     }
     load()
   }, [router])
+
+  async function submitAppeal() {
+    if (!appealId || appealText.trim().length < 10) return
+    setAppealPending(true)
+    try {
+      const res = await fetch(`/api/listings/${appealId}/appeal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: appealText.trim() }),
+      })
+      if (res.ok) {
+        setAppealId(null)
+        setAppealText("")
+      }
+    } finally {
+      setAppealPending(false)
+    }
+  }
 
   async function updateStatus(id: string, status: "ARCHIVED" | "ACTIVE") {
     setStatusPending(id)
@@ -199,15 +224,47 @@ export default function MyListingsPage() {
                     <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLOR[l.status] ?? "bg-zinc-100 text-zinc-500 border-zinc-200"}`}>
                       {STATUS_LABEL[l.status] ?? l.status}
                     </span>
+                    {l.isPromoted && (
+                      <span className="shrink-0 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-xs font-semibold text-[hsl(var(--nashlo-orange))]">
+                        Продвигается
+                      </span>
+                    )}
                   </div>
 
                   <p className="mt-0.5 text-sm text-zinc-500">{l.city ?? "—"} · {l.category.nameRu}</p>
                   <p className="mt-0.5 text-base font-bold text-zinc-950">{formatPrice(l.price)}</p>
+                  {l.status === "MODERATION" && l.rejectionReason && (
+                    <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+                      <p className="font-semibold">Нужно исправить</p>
+                      <p className="mt-1">{l.rejectionReason}</p>
+                      {moderationReasonByCode(l.moderationReasonCode)?.hint && (
+                        <p className="mt-1 text-amber-800/90">{moderationReasonByCode(l.moderationReasonCode)!.hint}</p>
+                      )}
+                    </div>
+                  )}
+                  {l.status === "REJECTED" && l.rejectionReason && (
+                    <div className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-900">
+                      <p className="font-semibold">Объявление отклонено</p>
+                      {moderationReasonByCode(l.moderationReasonCode)?.label && (
+                        <p className="mt-0.5 text-red-800/90">
+                          Код: {moderationReasonByCode(l.moderationReasonCode)!.label}
+                        </p>
+                      )}
+                      <p className="mt-1">{l.rejectionReason}</p>
+                      {moderationReasonByCode(l.moderationReasonCode)?.hint && (
+                        <p className="mt-1 text-red-800/90">{moderationReasonByCode(l.moderationReasonCode)!.hint}</p>
+                      )}
+                    </div>
+                  )}
+                  {l.autoApproved && l.status === "ACTIVE" && (
+                    <p className="mt-2 text-xs font-medium text-emerald-600">Автоматически проверено</p>
+                  )}
 
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-zinc-400">
                     <span>{new Date(l.createdAt).toLocaleDateString("ru-RU")}</span>
-                    {(l.views ?? 0) > 0 && <span>&#128065; {l.views}</span>}
-                    {(l._count?.favorites ?? 0) > 0 && <span>&#9825; {l._count!.favorites}</span>}
+                    <span>&#128065; {l.views ?? 0}</span>
+                    <span>{l.uniqueViews ?? 0} уник.</span>
+                    <span>&#9825; {l._count?.favorites ?? 0} в избранном</span>
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -218,6 +275,20 @@ export default function MyListingsPage() {
                         Снять
                       </button>
                     )}
+                    {(l.status === "MODERATION" || l.status === "REJECTED") && (
+                      <Link href={`/my-listings/${l.id}/edit`}
+                        className="rounded-xl bg-zinc-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-800 transition">
+                        Исправить объявление
+                      </Link>
+                    )}
+                    {(l.status === "MODERATION" || l.status === "REJECTED") && l.rejectionReason && (
+                      <button
+                        type="button"
+                        onClick={() => { setAppealId(l.id); setAppealText("") }}
+                        className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100 transition">
+                        Оспорить решение
+                      </button>
+                    )}
                     {(l.status === "ARCHIVED" || l.status === "REJECTED") && (
                       <button onClick={() => updateStatus(l.id, "ACTIVE")}
                         disabled={statusPending === l.id}
@@ -225,9 +296,15 @@ export default function MyListingsPage() {
                         Активировать
                       </button>
                     )}
+                    {(l.status === "ACTIVE" || l.status === "ARCHIVED" || l.status === "SOLD") && (
                     <Link href={`/my-listings/${l.id}/edit`}
                       className="rounded-xl border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 transition">
                       Изменить
+                    </Link>
+                    )}
+                    <Link href="/profile"
+                      className="rounded-xl border border-orange-200 px-3 py-1.5 text-xs font-semibold text-[hsl(var(--nashlo-orange))] hover:bg-orange-50 transition">
+                      Продвижение
                     </Link>
                     <button
                       onClick={() => { setConfirmDeleteId(l.id); setDeleteError("") }}
@@ -241,6 +318,47 @@ export default function MyListingsPage() {
           })}
         </div>
       )}
+      {appealId && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[env(safe-area-inset-bottom)] sm:items-center sm:p-0"
+          onClick={() => { if (!appealPending) setAppealId(null) }}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-md rounded-t-[32px] bg-white p-6 shadow-2xl sm:rounded-[32px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-zinc-950">Оспорить решение</h2>
+            <p className="mt-1 text-sm text-zinc-500">Кратко опишите, почему считаете решение ошибочным (не менее 10 символов).</p>
+            <textarea
+              className="mt-4 w-full resize-none rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm outline-none focus:border-zinc-400"
+              rows={4}
+              value={appealText}
+              onChange={(e) => setAppealText(e.target.value)}
+              maxLength={2000}
+            />
+            <div className="mt-4 flex gap-3">
+              <button
+                type="button"
+                disabled={appealPending}
+                onClick={() => setAppealId(null)}
+                className="flex-1 rounded-2xl border border-zinc-200 py-3 text-sm font-semibold text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                disabled={appealPending || appealText.trim().length < 10}
+                onClick={() => void submitAppeal()}
+                className="flex-1 rounded-2xl bg-zinc-950 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-40"
+              >
+                {appealPending ? "Отправка…" : "Отправить"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </main>
   )
 }

@@ -1,7 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import { notifyRecipientNewMessage } from '@/lib/push/notify-new-message'
+import { canSendMarketplaceMessage } from '@/lib/messaging-trust'
+import { messageLooksLikeDealRisk } from '@/lib/chat/deal-risk-keywords'
 import { z } from 'zod'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,
@@ -82,6 +87,11 @@ export async function POST(
       return NextResponse.json({ error: 'Нет доступа' }, { status: 403 })
     }
 
+    const gate = await canSendMarketplaceMessage(user.id, { conversationId: params.id })
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.message }, { status: 403 })
+    }
+
     const body = await request.json()
     const { text, images } = messageSchema.parse(body)
 
@@ -102,7 +112,31 @@ export async function POST(
       data: { updatedAt: new Date() },
     })
 
-    return NextResponse.json({ message }, { status: 201 })
+    const conv = await prisma.conversation.findUnique({
+      where: { id: params.id },
+      select: {
+        isSupport: true,
+        members: { select: { userId: true } },
+      },
+    })
+    if (conv && !conv.isSupport) {
+      const others = conv.members.filter((m) => m.userId !== user.id).map((m) => m.userId)
+      const preview = text.length > 200 ? `${text.slice(0, 200)}…` : text
+      const senderName = message.sender?.name ?? null
+      for (const uid of others) {
+        void notifyRecipientNewMessage({
+          recipientUserId: uid,
+          senderName,
+          messageText: preview,
+          conversationId: params.id,
+        })
+      }
+    }
+
+    return NextResponse.json(
+      { message, dealRiskHint: messageLooksLikeDealRisk(text) },
+      { status: 201 },
+    )
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors[0].message }, { status: 400 })
@@ -110,3 +144,4 @@ export async function POST(
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
   }
 }
+

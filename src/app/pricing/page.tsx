@@ -27,7 +27,7 @@ const subscriptions = [
     price: 1499,
     listings: 100,
     popular: true,
-    features: ["100 активных объявлений", "1 бесплатный «Подъём» в неделю", "Расширенная аналитика", "Значок проверенного продавца"],
+    features: ["100 активных объявлений", "1 бесплатный «Подъём» в неделю", "Расширенная аналитика", "Приоритет в очереди модерации"],
   },
   {
     name: "Бизнес",
@@ -74,6 +74,22 @@ export default function PricingPage() {
           ))}
         </div>
         <p className="mt-4 text-xs text-zinc-400">Для бесплатного размещения требуется подтверждение телефона. Лимит: не более 2 новых объявлений в сутки.</p>
+      </div>
+
+      <div className="mt-10 rounded-[28px] border border-zinc-200 bg-zinc-50 p-6 text-sm leading-relaxed text-zinc-700">
+        <p className="font-semibold text-zinc-950">Важно про оплату на Nashlo</p>
+        <p className="mt-2">
+          Платёж на Nashlo — это оплата функций самого сервиса (размещение, продвижение, выделение в списке и т.п.).
+          Это не оплата товара, авто, квартиры или услуги из объявления и не участие Nashlo в сделке между пользователями.
+          Продвижение и пакеты не гарантируют продажу и не заменяют проверку контрагента.
+        </p>
+        <p className="mt-3 text-xs text-zinc-500">
+          Подробнее — в{" "}
+          <Link href="/legal/offer" className="font-medium text-zinc-800 underline underline-offset-2">
+            оферте на платные услуги
+          </Link>
+          .
+        </p>
       </div>
 
       {/* Antispam note */}

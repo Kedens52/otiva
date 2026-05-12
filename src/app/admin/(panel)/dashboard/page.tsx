@@ -6,32 +6,64 @@ import { prisma } from "@/lib/prisma"
 export const dynamic = "force-dynamic"
 
 async function getStats() {
-  const now   = new Date()
+  const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const week  = new Date(today.getTime() - 7 * 86400_000)
+  const week = new Date(today.getTime() - 7 * 86400_000)
 
   const [
-    totalUsers, newUsersToday, newUsersWeek,
-    totalListings, pendingModeration, activeListings,
-    totalPayments, recentPayments,
+    totalUsers,
+    newUsersToday,
+    newUsersWeek,
+    totalListings,
+    pendingModeration,
+    activeListings,
+    totalPayments,
+    recentPayments,
     openReports,
+    fraudReportsPending,
+    reviewQueueCount,
+    highRiskUsers,
+    supportOperatorQueue,
+    paymentsPending,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: today } } }),
-    prisma.user.count({ where: { createdAt: { gte: week  } } }),
+    prisma.user.count({ where: { createdAt: { gte: week } } }),
     prisma.listing.count(),
     prisma.listing.count({ where: { status: "MODERATION" } }),
-    prisma.listing.count({ where: { status: "ACTIVE"     } }),
+    prisma.listing.count({ where: { status: "ACTIVE" } }),
     prisma.payment.count(),
     prisma.payment.count({ where: { createdAt: { gte: week }, status: "paid" } }),
     prisma.report.count({ where: { status: "pending" } }),
+    prisma.report.count({ where: { status: "pending", reason: "fraud" } }),
+    prisma.review.count({
+      where: {
+        isDeleted: false,
+        OR: [{ reviewModerationState: "PENDING_MODERATION" }, { reviewModerationState: "DISPUTED" }],
+      },
+    }),
+    prisma.user.count({ where: { trustTier: "HIGH_RISK" } }),
+    prisma.conversation.count({
+      where: { isSupport: true, OR: [{ operatorNeeded: true }, { supportWorkflowStatus: "WAITING_OPERATOR" }] },
+    }),
+    prisma.payment.count({ where: { status: "pending" } }),
   ])
 
   return {
-    totalUsers, newUsersToday, newUsersWeek,
-    totalListings, pendingModeration, activeListings,
-    totalPayments, recentPayments,
+    totalUsers,
+    newUsersToday,
+    newUsersWeek,
+    totalListings,
+    pendingModeration,
+    activeListings,
+    totalPayments,
+    recentPayments,
     openReports,
+    fraudReportsPending,
+    reviewQueueCount,
+    highRiskUsers,
+    supportOperatorQueue,
+    paymentsPending,
   }
 }
 
@@ -76,6 +108,28 @@ export default async function AdminDashboardPage() {
         <StatCard label="Объявлений"      value={s.totalListings.toLocaleString("ru")}   sub={`${s.activeListings} активных`}   color="blue"   />
         <StatCard label="На модерации"    value={s.pendingModeration}                     sub="ждут проверки"                    color={s.pendingModeration > 0 ? "red" : "green"} />
         <StatCard label="Жалобы"          value={s.openReports}                           sub="открытых"                         color={s.openReports > 0 ? "red" : "green"} />
+      </div>
+
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+        <StatCard label="Жалобы: мошенничество" value={s.fraudReportsPending} sub="в статусе pending" color={s.fraudReportsPending > 0 ? "red" : "green"} />
+        <StatCard label="Отзывы на проверке"   value={s.reviewQueueCount}   sub="модерация / споры" color={s.reviewQueueCount > 0 ? "orange" : "green"} />
+        <StatCard label="Профили HIGH_RISK"   value={s.highRiskUsers}      sub="по внутренней модели" color={s.highRiskUsers > 0 ? "red" : "green"} />
+        <StatCard label="Поддержка: оператор" value={s.supportOperatorQueue} sub="ожидают ответа" color={s.supportOperatorQueue > 0 ? "orange" : "green"} />
+      </div>
+
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+        <StatCard label="Платежи pending" value={s.paymentsPending} sub="нужна проверка" color={s.paymentsPending > 0 ? "orange" : "green"} />
+      </div>
+
+      <div className="mb-8 rounded-xl border border-gray-800 bg-gray-900/80 p-4 text-sm text-gray-400">
+        <span className="font-semibold text-gray-300">Быстрые ссылки: </span>
+        <a className="text-orange-400 hover:underline" href="/admin/moderation">Модерация и жалобы</a>
+        {" · "}
+        <a className="text-orange-400 hover:underline" href="/admin/support">Поддержка</a>
+        {" · "}
+        <a className="text-orange-400 hover:underline" href="/admin/payments">Платежи</a>
+        {" · "}
+        <a className="text-orange-400 hover:underline" href="/admin/users">Пользователи</a>
       </div>
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">

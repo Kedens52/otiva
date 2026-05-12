@@ -5,9 +5,31 @@ import Link from "next/link"
 import { ListingCard } from "@/components/marketplace/ListingCard"
 import { type AppListing, CATEGORY_META, imageToneForCategory } from "@/lib/listing-types"
 import { trackUserInterest } from "@/lib/recommendations"
+import { getCategoryConfig } from "@/lib/category-config"
 
 type CategoryPageProps = {
   category: string
+}
+
+const STATIC_CITY_OPTIONS = [
+  "Москва",
+  "Санкт-Петербург",
+  "Казань",
+  "Екатеринбург",
+  "Новосибирск",
+  "Сочи",
+  "Краснодар",
+  "Нижний Новгород",
+  "Самара",
+  "Ростов-на-Дону",
+]
+
+function mergeCityOptions(staticList: string[], fromApi: string[] | undefined): string[] {
+  const s = new Set(staticList)
+  for (const c of fromApi ?? []) {
+    if (c?.trim()) s.add(c.trim())
+  }
+  return [...s].sort((a, b) => a.localeCompare(b, "ru"))
 }
 
 const sortOptions = [
@@ -18,6 +40,7 @@ const sortOptions = [
 
 export function CategoryPage({ category }: CategoryPageProps) {
   const meta     = CATEGORY_META.find((c) => c.slug === category)
+  const categoryConfig = getCategoryConfig(category)
   const tone     = imageToneForCategory(category)
 
   const [items, setItems]   = useState<AppListing[]>([])
@@ -27,6 +50,7 @@ export function CategoryPage({ category }: CategoryPageProps) {
   const [city, setCity]     = useState("")
   const [sort, setSort]     = useState("newest")
   const [priceMax, setPriceMax] = useState("")
+  const [cityOptions, setCityOptions] = useState<string[]>(() => [...STATIC_CITY_OPTIONS])
   const abortRef = useRef<AbortController | null>(null)
 
   const fetchItems = useCallback(async () => {
@@ -38,26 +62,34 @@ export function CategoryPage({ category }: CategoryPageProps) {
     const sp = new URLSearchParams()
     sp.set("category", category)
     sp.set("pageSize", "60")
-    if (query)    sp.set("q", query)
-    if (city)     sp.set("city", city)
+    if (query) sp.set("q", query)
+    if (city) sp.set("city", city)
     if (priceMax) sp.set("priceMax", priceMax)
     const sortMap: Record<string, { by: string; order: string }> = {
-      newest:     { by: "createdAt", order: "desc" },
-      price_asc:  { by: "price",     order: "asc"  },
-      price_desc: { by: "price",     order: "desc" },
+      newest: { by: "createdAt", order: "desc" },
+      price_asc: { by: "price", order: "asc" },
+      price_desc: { by: "price", order: "desc" },
     }
-    sp.set("sortBy",    sortMap[sort].by)
+    sp.set("sortBy", sortMap[sort].by)
     sp.set("sortOrder", sortMap[sort].order)
 
     try {
       const res = await fetch(`/api/listings?${sp.toString()}`, { signal: ctrl.signal })
-      if (res.ok) {
-        const data = await res.json()
-        setItems(data.items ?? [])
-        setTotal(data.total ?? 0)
+      if (!res.ok) return
+      const data = await res.json()
+      setItems(data.items ?? [])
+      setTotal(data.total ?? 0)
+      const dyn = data.availableFilterOptions?.cities
+      if (Array.isArray(dyn) && dyn.length) {
+        setCityOptions(mergeCityOptions(STATIC_CITY_OPTIONS, dyn))
+      } else {
+        setCityOptions([...STATIC_CITY_OPTIONS])
       }
     } catch (e: unknown) {
-      if (!(e instanceof Error && e.name === "AbortError")) { setItems([]); setTotal(0) }
+      if (!(e instanceof Error && e.name === "AbortError")) {
+        setItems([])
+        setTotal(0)
+      }
     } finally {
       setLoading(false)
     }
@@ -76,7 +108,9 @@ export function CategoryPage({ category }: CategoryPageProps) {
     <main className="mx-auto max-w-7xl px-4 py-6 lg:py-10">
       <section className={`overflow-hidden rounded-[28px] bg-gradient-to-br ${tone} p-5 text-white shadow-2xl shadow-zinc-950/15 sm:rounded-[36px] sm:p-10`}>
         <div className="max-w-3xl">
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-6xl">{meta?.title ?? category}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-6xl">
+            {categoryConfig?.title ?? meta?.title ?? category}
+          </h1>
           <p className="mt-3 text-sm leading-6 text-white/85 sm:mt-5 sm:text-lg">
             {total > 0 ? `${total} объявлений` : "Объявлений пока нет"}
           </p>
@@ -98,6 +132,21 @@ export function CategoryPage({ category }: CategoryPageProps) {
               <input value={priceMax} onChange={(e) => setPriceMax(e.target.value)} type="number"
                 className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none focus:border-[hsl(var(--nashlo-orange))]"
                 placeholder="100 000" />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium text-zinc-600">Город</span>
+              <select
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none"
+              >
+                <option value="">Все города</option>
+                {cityOptions.map((cityValue) => (
+                  <option key={cityValue} value={cityValue}>
+                    {cityValue}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="block">
               <span className="text-sm font-medium text-zinc-600">Сортировка</span>

@@ -1,10 +1,12 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { AdminLogoutButton } from "@/components/admin/AdminLogoutButton"
 import { formatPrice } from "@/lib/listing-types"
 import { getAdminCsrfFromDocument } from "@/lib/admin/csrf-client"
+import { ListingModerationDecisionModal } from "@/components/admin/ListingModerationDecisionModal"
+import type { ModerationReasonCode } from "@/lib/moderation-reasons"
 
 type QueueItem = {
   id: string
@@ -19,22 +21,40 @@ type QueueItem = {
 
 type Report = {
   id: string
-  listingId: string
+  listingId: string | null
   listing: { id: string; title: string } | null
+  targetUserId: string | null
+  targetUser: { id: string; name: string | null } | null
   reason: string
   comment: string
   status: string
   createdAt: string
 }
 
-type ReportTab = "queue" | "reports"
+type ReviewQueueItem = {
+  id: string
+  rating: number
+  text: string | null
+  reviewModerationState: string
+  createdAt: string
+  author: { id: string; name: string | null; phone: string | null }
+  targetUser: { id: string; name: string | null; phone: string | null }
+  listing: { id: string; title: string } | null
+}
+
+type ReportTab = "queue" | "reports" | "reviews"
 
 const REASON_LABELS: Record<string, string> = {
   fraud:          "Мошенничество или обман",
   prohibited:     "Запрещённый товар",
-  spam:           "Спам или дубликат",
+  spam:           "Спам",
+  duplicate:      "Дубль",
   wrong_category: "Не та категория",
   wrong_price:    "Неверная цена",
+  false_info:     "Ложная информация",
+  user_abuse:     "Оскорбления / угрозы",
+  appeal:         "Оспаривание модерации",
+  appeal_moderation: "Оспаривание модерации",
   other:          "Другое",
 }
 
@@ -45,77 +65,14 @@ const autoFilters = [
   { id: "words",      title: "Стоп-слова",            desc: "Запрещённые товары, обещания и спам",    level: "Средний" },
 ]
 
-// ── Rejection reason modal ─────────────────────────────────────────────────────
-function RejectModal({
-  listingTitle,
-  onConfirm,
-  onCancel,
-}: {
-  listingTitle: string
-  onConfirm: (reason: string) => void
-  onCancel: () => void
-}) {
-  const [reason, setReason] = useState("")
-  const inputRef = useRef<HTMLTextAreaElement>(null)
-  useEffect(() => { inputRef.current?.focus() }, [])
-
-  const QUICK = [
-    "Запрещённый товар или услуга",
-    "Спам или дублирующее объявление",
-    "Некорректные фото или описание",
-    "Неправильная категория",
-    "Контактные данные в описании",
-    "Недостоверная цена или информация",
-  ]
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-xl">
-        <h2 className="text-xl font-semibold text-zinc-950">Причина отклонения</h2>
-        <p className="mt-1 text-sm text-zinc-500 truncate">«{listingTitle}»</p>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          {QUICK.map((q) => (
-            <button key={q} onClick={() => setReason(q)}
-              className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition ${reason === q ? "border-zinc-950 bg-zinc-950 text-white" : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-100"}`}>
-              {q}
-            </button>
-          ))}
-        </div>
-
-        <textarea
-          ref={inputRef}
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Или напишите свою причину…"
-          rows={3}
-          maxLength={500}
-          className="mt-4 w-full resize-none rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-950 outline-none transition focus:border-zinc-400"
-        />
-        <p className="mt-1 text-right text-xs text-zinc-400">{reason.length}/500</p>
-
-        <div className="mt-4 flex gap-3">
-          <button onClick={onCancel}
-            className="flex-1 rounded-2xl border border-zinc-200 py-3 text-sm font-semibold text-zinc-600 hover:bg-zinc-50 transition">
-            Отмена
-          </button>
-          <button onClick={() => reason.trim() && onConfirm(reason.trim())}
-            disabled={!reason.trim()}
-            className="flex-1 rounded-2xl bg-red-600 py-3 text-sm font-semibold text-white hover:bg-red-700 transition disabled:cursor-not-allowed disabled:opacity-50">
-            Отклонить
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function AdminModerationPage() {
   const [tab, setTab]       = useState<ReportTab>("queue")
   const [queue, setQueue]   = useState<QueueItem[]>([])
   const [loading, setLoading] = useState(true)
   const [reports, setReports] = useState<Report[]>([])
+  const [reviewItems, setReviewItems] = useState<ReviewQueueItem[]>([])
+  const [reviewLoading, setReviewLoading] = useState(false)
   const [rejectTarget, setRejectTarget] = useState<QueueItem | null>(null)
   const [activeFilters, setActiveFilters] = useState<Record<string, boolean>>(
     Object.fromEntries(autoFilters.map((f) => [f.id, true]))
@@ -143,16 +100,55 @@ export default function AdminModerationPage() {
     } catch {}
   }
 
+  async function loadReviewQueue() {
+    setReviewLoading(true)
+    try {
+      const res = await fetch("/api/admin/review-queue")
+      if (res.ok) {
+        const data = await res.json()
+        setReviewItems(data.items ?? [])
+      }
+    } catch {}
+    setReviewLoading(false)
+  }
+
+  async function publishReview(id: string) {
+    const res = await fetch(`/api/admin/reviews/${id}/publish`, {
+      method: "POST",
+      headers: { "X-CSRF-Token": getAdminCsrfFromDocument() },
+    })
+    if (res.ok) setReviewItems((prev) => prev.filter((r) => r.id !== id))
+  }
+
+  async function hideReviewAdmin(id: string) {
+    const res = await fetch(`/api/admin/reviews/${id}/hide`, {
+      method: "POST",
+      headers: { "X-CSRF-Token": getAdminCsrfFromDocument() },
+    })
+    if (res.ok) setReviewItems((prev) => prev.filter((r) => r.id !== id))
+  }
+
   useEffect(() => {
     loadQueue()
     loadReports()
+    loadReviewQueue()
   }, [])
 
-  async function moderate(listingId: string, action: "APPROVED" | "REJECTED", reason?: string) {
+  async function moderate(
+    listingId: string,
+    action: "APPROVED" | "REJECTED" | "NEEDS_REVISION",
+    reason?: string,
+    moderationReasonCode?: ModerationReasonCode,
+  ) {
     const res = await fetch("/api/admin/listings", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": getAdminCsrfFromDocument() },
-      body: JSON.stringify({ listingId, action, reason }),
+      body: JSON.stringify({
+        listingId,
+        action,
+        reason,
+        ...(moderationReasonCode ? { moderationReasonCode } : {}),
+      }),
     })
     if (res.ok) {
       setQueue((prev) => prev.filter((l) => l.id !== listingId))
@@ -176,9 +172,10 @@ export default function AdminModerationPage() {
   return (
     <>
       {rejectTarget && (
-        <RejectModal
+        <ListingModerationDecisionModal
           listingTitle={rejectTarget.title}
-          onConfirm={(reason) => moderate(rejectTarget.id, "REJECTED", reason)}
+          onRevision={(reason, code) => moderate(rejectTarget.id, "NEEDS_REVISION", reason, code)}
+          onFinalReject={(reason, code) => moderate(rejectTarget.id, "REJECTED", reason, code)}
           onCancel={() => setRejectTarget(null)}
         />
       )}
@@ -196,6 +193,7 @@ export default function AdminModerationPage() {
           {[
             { value: String(queue.length), label: "В очереди" },
             { value: String(pendingReports), label: "Жалоб" },
+            { value: String(reviewItems.length), label: "Отзывы" },
           ].map(({ value, label }) => (
             <div key={label} className="rounded-[24px] border border-zinc-200 bg-white p-4 shadow-sm">
               <p className="text-2xl font-semibold text-zinc-950">{value}</p>
@@ -220,6 +218,15 @@ export default function AdminModerationPage() {
             {pendingReports > 0 && (
               <span className={"rounded-full px-1.5 py-0.5 text-[10px] font-bold " + (tab === "reports" ? "bg-white text-zinc-950" : "bg-red-600 text-white")}>
                 {pendingReports}
+              </span>
+            )}
+          </button>
+          <button onClick={() => setTab("reviews")}
+            className={"flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition " + (tab === "reviews" ? "bg-zinc-950 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200")}>
+            Отзывы
+            {reviewItems.length > 0 && (
+              <span className={"rounded-full px-1.5 py-0.5 text-[10px] font-bold " + (tab === "reviews" ? "bg-white text-zinc-950" : "bg-amber-500 text-white")}>
+                {reviewItems.length}
               </span>
             )}
           </button>
@@ -275,7 +282,7 @@ export default function AdminModerationPage() {
                             </button>
                             <button onClick={() => setRejectTarget(item)}
                               className="rounded-xl bg-red-50 py-2 text-xs font-semibold text-red-600 hover:bg-red-100 transition">
-                              Отклонить
+                              Решение
                             </button>
                           </div>
                         </div>
@@ -284,7 +291,7 @@ export default function AdminModerationPage() {
                   </div>
                 )}
               </>
-            ) : (
+            ) : tab === "reports" ? (
               <>
                 <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
                   <h2 className="font-semibold text-zinc-950">Жалобы пользователей</h2>
@@ -302,8 +309,14 @@ export default function AdminModerationPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-semibold text-zinc-950">
-                              {report.listing?.title ?? report.listingId}
+                              {report.listing?.title ?? report.targetUser?.name ?? "Жалоба на пользователя"}
                             </p>
+                            {report.targetUser && (
+                              <Link href={"/admin/users/" + report.targetUser.id}
+                                className="mt-1 inline-block text-xs font-medium text-zinc-600 hover:text-[hsl(var(--nashlo-orange))] hover:underline">
+                                Профиль пользователя ↗
+                              </Link>
+                            )}
                             <p className="mt-0.5 text-sm font-medium text-zinc-600">{REASON_LABELS[report.reason] ?? report.reason}</p>
                             {report.comment && <p className="mt-1 text-sm text-zinc-400">«{report.comment}»</p>}
                             <p className="mt-0.5 text-xs text-zinc-400">
@@ -322,6 +335,54 @@ export default function AdminModerationPage() {
                               Обработать
                             </button>
                           </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+                  <h2 className="font-semibold text-zinc-950">Отзывы: модерация и споры</h2>
+                  <span className="rounded-full bg-zinc-100 px-3 py-1 text-sm text-zinc-600">{reviewItems.length}</span>
+                </div>
+                {reviewLoading ? (
+                  <div className="py-12 text-center text-sm text-zinc-400">Загрузка...</div>
+                ) : reviewItems.length === 0 ? (
+                  <div className="py-16 text-center text-zinc-400">
+                    <p className="mb-3 text-3xl">✅</p>
+                    <p className="font-medium">Очередь отзывов пуста</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-zinc-100">
+                    {reviewItems.map((rv) => (
+                      <div key={rv.id} className="px-5 py-4">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{rv.reviewModerationState}</p>
+                        <p className="mt-1 font-semibold text-zinc-950">
+                          {"★".repeat(Math.min(5, Math.max(1, rv.rating)))} ({rv.rating}) · {rv.author.name ?? rv.author.phone ?? "Автор"} → {rv.targetUser.name ?? rv.targetUser.phone ?? "Получатель"}
+                        </p>
+                        {rv.listing && <p className="mt-0.5 text-sm text-zinc-500">{rv.listing.title}</p>}
+                        {rv.text && <p className="mt-2 text-sm text-zinc-600">«{rv.text}»</p>}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button type="button" onClick={() => void publishReview(rv.id)}
+                            className="rounded-xl bg-zinc-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-800 transition">
+                            Опубликовать / снять спор
+                          </button>
+                          <button type="button" onClick={() => void hideReviewAdmin(rv.id)}
+                            className="rounded-xl border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition">
+                            Скрыть
+                          </button>
+                          {rv.listing && (
+                            <Link href={"/listings/" + rv.listing.id} target="_blank"
+                              className="rounded-xl border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-50">
+                              Объявление ↗
+                            </Link>
+                          )}
+                          <Link href={"/admin/users/" + rv.targetUser.id}
+                            className="rounded-xl border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-50">
+                            Получатель ↗
+                          </Link>
                         </div>
                       </div>
                     ))}

@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { notFound } from "next/navigation"
+import { CalendarDays, Eye, Flag, Heart, MapPin, MessageCircle, Phone, Share2 } from "lucide-react"
 import { formatPrice, imageToneForCategory, categorySlug } from "@/lib/listing-types"
 import { ContactSellerModal } from "@/components/marketplace/ContactSellerModal"
 import { ReportModal } from "@/components/marketplace/ReportModal"
@@ -10,6 +11,10 @@ import { YandexMap } from "@/components/YandexMap"
 import { ListingCard } from "@/components/marketplace/ListingCard"
 import type { AppListing } from "@/lib/listing-types"
 import { trackListingInterest } from "@/lib/recommendations"
+import { ListingBreadcrumbs } from "@/components/listings/ListingBreadcrumbs"
+import { getListingBreadcrumbs } from "@/lib/categories/listing-breadcrumbs"
+import { buildBreadcrumbJsonLd } from "@/lib/seo/jsonld"
+import { getVisibleListingAttributes } from "@/lib/listings/format-listing-attributes"
 
 type FullListing = AppListing & {
   video?: string | null
@@ -95,7 +100,12 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
     const res = await fetch("/api/reviews", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sellerId: listing.seller.id, rating: reviewRating, text: reviewText }),
+      body: JSON.stringify({
+        targetUserId: listing.seller.id,
+        listingId: listing.id,
+        rating: reviewRating,
+        text: reviewText,
+      }),
     })
     if (res.ok) { setReviewSent(true); setReviewOpen(false) }
   }
@@ -131,39 +141,38 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
   const images = listing.images?.length ? listing.images : []
   const mainImage = images[currentImage] ?? null
   const attrs = (listing as unknown as { attributes?: Record<string, unknown> }).attributes
-  const ATTR_LABELS: Record<string, string> = {
-    make: "Марка", model: "Модель", year: "Год выпуска", mileage: "Пробег",
-    fuel: "Тип топлива", transmission: "КПП", body_type: "Тип кузова",
-    vehicle_type: "Тип ТС", color: "Цвет", condition: "Состояние",
-    property_type: "Тип жилья", rooms: "Комнат", area: "Площадь, м²",
-    floor: "Этаж", floors_total: "Этажей в доме", deal_type: "Тип сделки",
-    brand: "Бренд", storage: "Память", ram: "ОЗУ", size: "Размер",
-    gender: "Пол", material: "Материал", subcategory: "Подкатегория",
-    employment_type: "Тип занятости", experience: "Опыт", salary: "Зарплата",
-    schedule: "График", breed: "Порода", age: "Возраст", weight: "Вес",
-    service_type: "Формат", duration: "Длительность",
-  }
-  function attrLabel(key: string): string { return ATTR_LABELS[key] ?? key.replace(/_/g, " ") }
-  function attrValue(key: string, value: unknown): string {
-    const v = String(value)
-    const VALUES: Record<string, Record<string, string>> = {
-      condition: { new: "Новое", used: "Б/у", excellent: "Отличное", good: "Хорошее" },
-      fuel: { petrol: "Бензин", diesel: "Дизель", electric: "Электро", hybrid: "Гибрид", gas: "Газ" },
-      transmission: { manual: "Механика", automatic: "Автомат", robot: "Робот", variator: "Вариатор" },
-      deal_type: { sell: "Продажа", rent: "Аренда", rent_daily: "Посуточно" },
-      employment_type: { full: "Полная", part: "Частичная", remote: "Удалённо", contract: "Договор" },
-      gender: { men: "Мужское", women: "Женское", kids: "Детское", unisex: "Унисекс" },
-      vehicle_type: { car: "Легковой", truck: "Грузовой", moto: "Мотоцикл", commercial: "Коммерческий", special: "Спецтехника", trailer: "Прицеп" },
-    }
-    return VALUES[key]?.[v] ?? v
-  }
+  const visibleAttrs = getVisibleListingAttributes(attrs, slug)
   const isOwn = me?.id === listing.seller?.id
+  const favoriteCount = listing._count?.favorites ?? 0
+  const viewCount = listing.views ?? listing.uniqueViews ?? 0
+  const publishedAt = listing.createdAt ? new Date(listing.createdAt).toLocaleDateString("ru-RU") : null
+  const sellerSince = listing.seller?.createdAt ? new Date(listing.seller.createdAt).toLocaleDateString("ru-RU", { month: "long", year: "numeric" }) : null
 
   function openWrite() { setContactTab("write"); setContactOpen(true) }
   function openCall() { setContactTab("call"); setContactOpen(true) }
 
+  // ── Breadcrumbs ───────────────────────────────────────────────────────────
+  const catSlug = slug || null
+  const catNameRu =
+    typeof listing.category === "object" ? (listing.category?.nameRu ?? null) : null
+  const subcatValue =
+    (attrs as Record<string, unknown> | null | undefined)?.subcategory as string | null ?? null
+  const breadcrumbs = getListingBreadcrumbs({
+    title: listing.title,
+    categorySlug: catSlug,
+    categoryNameRu: catNameRu,
+    subcategoryValue: subcatValue,
+  })
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd(breadcrumbs, listing.id)
+
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 lg:py-10">
+    <>
+      <ListingBreadcrumbs crumbs={breadcrumbs} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <main className="mx-auto max-w-7xl px-4 py-6 lg:py-10">
       {contactOpen && listing.seller?.id && (
         <ContactSellerModal
           sellerId={listing.seller.id}
@@ -178,7 +187,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
         />
       )}
       {reportOpen && (
-        <ReportModal listingId={listing.id} listingTitle={listing.title} onClose={() => setReportOpen(false)} />
+        <ReportModal variant="listing" listingId={listing.id} listingTitle={listing.title} onClose={() => setReportOpen(false)} />
       )}
 
       {reviewOpen && !isOwn && (
@@ -238,21 +247,26 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
       </div>
 
       <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div>
-          <div className={"relative overflow-hidden rounded-[32px] bg-gradient-to-br " + tone}>
+        <div className="min-w-0">
+          <div className={"relative overflow-hidden rounded-[28px] border border-zinc-100 bg-gradient-to-br shadow-sm sm:rounded-[32px] " + tone}>
             {mainImage ? (
               <img src={mainImage} alt={listing.title}
-                className="h-64 w-full object-cover sm:h-80 lg:h-96"
+                className="h-72 w-full object-cover sm:h-96 lg:h-[500px]"
                 onError={(e) => { (e.target as HTMLImageElement).src = "/categories/" + slug + ".svg" }} />
             ) : (
-              <div className="flex h-64 w-full items-center justify-center sm:h-80 lg:h-96">
+              <div className="flex h-72 w-full items-center justify-center sm:h-96 lg:h-[500px]">
                 <img src={"/categories/" + slug + ".svg"} alt="" className="h-24 w-24 opacity-50" />
               </div>
             )}
             <button onClick={toggleFav} aria-label="Избранное"
-              className={"absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-2xl border shadow-sm backdrop-blur-sm transition " + (isFav ? "border-red-200 bg-red-50 text-red-500" : "border-white/30 bg-white/80 text-zinc-500 hover:text-red-400")}>
-              {isFav ? "&#9829;" : "&#9825;"}
+              className={"absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full border shadow-sm backdrop-blur-md transition active:scale-95 " + (isFav ? "border-red-200 bg-red-50 text-red-500" : "border-white/50 bg-white/85 text-zinc-700 hover:text-red-500")}>
+              <Heart className="h-5 w-5" fill={isFav ? "currentColor" : "none"} />
             </button>
+            {images.length > 0 && (
+              <div className="absolute bottom-4 left-4 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm backdrop-blur">
+                {currentImage + 1} / {images.length}
+              </div>
+            )}
             {listing.status === "SOLD" && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                 <span className="rounded-2xl bg-white px-6 py-3 text-lg font-bold text-zinc-950">Продано</span>
@@ -261,10 +275,10 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
           </div>
 
           {images.length > 1 && (
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {images.map((img, i) => (
                 <button key={i} type="button" onClick={() => setCurrentImage(i)}
-                  className={"h-16 w-16 shrink-0 overflow-hidden rounded-xl transition " + (i === currentImage ? "ring-2 ring-zinc-950" : "opacity-60 hover:opacity-100")}>
+                  className={"h-16 w-16 shrink-0 overflow-hidden rounded-2xl border bg-zinc-100 transition " + (i === currentImage ? "border-zinc-950 opacity-100 ring-2 ring-zinc-950/10" : "border-transparent opacity-70 hover:opacity-100")}>
                   <img src={img} alt="" className="h-full w-full object-cover"
                     onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = "none" }} />
                 </button>
@@ -280,19 +294,56 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
             </div>
           )}
 
-          <h1 className="mt-6 text-2xl font-semibold tracking-tight text-zinc-950 sm:text-3xl">{listing.title}</h1>
-          {listing.description && (
-            <p className="mt-4 text-base leading-7 text-zinc-500">{listing.description}</p>
-          )}
+          <div className="mt-5 rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm lg:hidden">
+            {listing.city && <p className="flex items-center gap-1.5 text-sm font-medium text-zinc-500"><MapPin className="h-4 w-4" />{listing.city}</p>}
+            <p className="mt-2 text-4xl font-semibold tracking-tight text-zinc-950">{formatPrice(listing.price)}</p>
+            {!isOwn ? (
+              <>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button onClick={openWrite} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-4 text-sm font-semibold text-white">
+                    <MessageCircle className="h-4 w-4" /> Написать
+                  </button>
+                  <button onClick={openCall} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-950">
+                    <Phone className="h-4 w-4" /> Позвонить
+                  </button>
+                </div>
+                <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">
+                  Проверяйте информацию перед сделкой. Nashlo не является стороной сделки между пользователями.
+                </p>
+              </>
+            ) : (
+              <Link href={"/my-listings/" + listing.id + "/edit"} className="mt-4 flex min-h-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-950">
+                Редактировать
+              </Link>
+            )}
+          </div>
 
-          {attrs && Object.keys(attrs).length > 0 && (
-            <div className="mt-6 rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-zinc-950">Характеристики</h2>
+          <h1 className="mt-6 text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl">{listing.title}</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-zinc-500">
+            {listing.city && <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" />{listing.city}</span>}
+            {publishedAt && <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />{publishedAt}</span>}
+            {viewCount > 0 && <span className="flex items-center gap-1.5"><Eye className="h-4 w-4" />{viewCount.toLocaleString("ru-RU")} просмотров</span>}
+            <span>ID {listing.id.slice(0, 8)}</span>
+          </div>
+
+          <section className="mt-6 rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+            <h2 className="text-xl font-semibold tracking-tight text-zinc-950">Описание</h2>
+            <p className="mt-4 whitespace-pre-line text-base leading-7 text-zinc-600">
+              {listing.description?.trim() || "Описание не указано"}
+            </p>
+            <p className="mt-4 rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-3 text-xs leading-relaxed text-amber-950">
+              Перед встречей и оплатой проверьте объявление и собеседника. Nashlo не участвует в сделке между пользователями и не принимает деньги за товар или услугу из объявления.
+            </p>
+          </section>
+
+          {visibleAttrs.length > 0 && (
+            <div className="mt-6 rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+              <h2 className="text-xl font-semibold tracking-tight text-zinc-950">Характеристики</h2>
               <dl className="mt-4 grid gap-2 sm:grid-cols-2">
-                {Object.entries(attrs).filter(([, v]) => v !== null && v !== undefined && v !== "").map(([name, value]) => (
-                  <div key={name} className="rounded-xl bg-zinc-50 px-4 py-3">
-                    <dt className="text-xs text-zinc-500">{attrLabel(name)}</dt>
-                    <dd className="mt-0.5 text-sm font-semibold text-zinc-950">{attrValue(name, value)}</dd>
+                {visibleAttrs.map((attr) => (
+                  <div key={attr.key} className="rounded-2xl bg-zinc-50 px-4 py-3">
+                    <dt className="text-xs font-medium text-zinc-500">{attr.label}</dt>
+                    <dd className="mt-1 text-sm font-semibold text-zinc-950">{attr.value}</dd>
                   </div>
                 ))}
               </dl>
@@ -309,36 +360,33 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
           )}
         </div>
 
-        <aside className="order-first h-fit rounded-[32px] border border-zinc-200 bg-zinc-50 p-5 shadow-inner lg:order-last lg:sticky lg:top-6">
+        <aside className="hidden h-fit rounded-[32px] border border-zinc-200 bg-white p-5 shadow-[0_18px_60px_rgba(15,23,42,0.08)] lg:sticky lg:top-6 lg:block">
           <div className="flex items-start justify-between gap-2">
             <div>
-              {listing.city && <p className="text-sm text-zinc-500">{listing.city}</p>}
+              {listing.city && <p className="flex items-center gap-1.5 text-sm font-medium text-zinc-500"><MapPin className="h-4 w-4" />{listing.city}</p>}
               <p className="mt-1 text-4xl font-semibold tracking-tight text-zinc-950">{formatPrice(listing.price)}</p>
+              {favoriteCount > 0 && <p className="mt-1 text-sm text-zinc-400">{favoriteCount.toLocaleString("ru-RU")} добавили в избранное</p>}
             </div>
           </div>
 
           {listing.seller && (
-            <div className="mt-5 rounded-[24px] bg-white p-4 shadow-sm">
+            <div className="mt-5 rounded-[24px] bg-zinc-50 p-4">
               <Link href={"/profile/" + listing.seller.id} className="flex items-center gap-3 hover:opacity-80">
                 {listing.seller.avatar ? (
-                  <img src={listing.seller.avatar} alt="" className="h-11 w-11 rounded-full object-cover" />
+                  <img src={listing.seller.avatar} alt="" className="h-12 w-12 rounded-full object-cover" />
                 ) : (
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-sm font-semibold text-white">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-sm font-semibold text-white">
                     {(listing.seller.name ?? "П")[0]}
                   </div>
                 )}
-                <div>
+                <div className="min-w-0">
                   <p className="font-semibold text-zinc-950">{listing.seller.name ?? "Продавец"}</p>
                   {(listing.seller.rating ?? 0) > 0 && (
-                    <p className="mt-0.5 text-sm text-zinc-500">&#9733; {listing.seller.rating!.toFixed(1)} &#183; {listing.seller.reviewCount} отз.</p>
+                    <p className="mt-0.5 text-sm text-zinc-500">★ {listing.seller.rating!.toFixed(1)} · {listing.seller.reviewCount} отз.</p>
                   )}
+                  {sellerSince && <p className="mt-0.5 text-xs text-zinc-400">На Нашло с {sellerSince}</p>}
                 </div>
               </Link>
-              {listing.seller.isVerified && (
-                <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-                  &#10003; Проверенный продавец
-                </p>
-              )}
             </div>
           )}
 
@@ -360,22 +408,31 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                 </div>
               )}
               <button onClick={shareListing}
-                className="flex items-center justify-center rounded-full border-2 border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-50">
+                className="flex items-center justify-center gap-2 rounded-full border-2 border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-50">
+                <Share2 className="h-4 w-4" />
                 {shared ? "Ссылка скопирована" : "Поделиться"}
               </button>
             </div>
           ) : (
             <div className="mt-4 grid gap-2">
               <button onClick={openWrite}
-                className="rounded-full bg-zinc-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-zinc-800">
+                className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-zinc-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-zinc-800">
+                <MessageCircle className="h-4 w-4" />
                 Написать продавцу
               </button>
               <button onClick={openCall}
-                className="rounded-full border-2 border-zinc-200 bg-white px-5 py-4 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-50">
+                className="flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-zinc-200 bg-white px-5 py-4 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-50">
+                <Phone className="h-4 w-4" />
                 Позвонить продавцу
               </button>
+              <button onClick={toggleFav}
+                className="flex items-center justify-center gap-2 rounded-full border-2 border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-50">
+                <Heart className="h-4 w-4" fill={isFav ? "currentColor" : "none"} />
+                {isFav ? "В избранном" : "В избранное"}
+              </button>
               <button onClick={shareListing}
-                className="flex items-center justify-center rounded-full border-2 border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-50">
+                className="flex items-center justify-center gap-2 rounded-full border-2 border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-50">
+                <Share2 className="h-4 w-4" />
                 {shared ? "Ссылка скопирована" : "Поделиться"}
               </button>
               {me && !reviewSent && (
@@ -386,9 +443,13 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
               )}
               {reviewSent && <p className="text-center text-sm text-emerald-600">Отзыв отправлен &#10003;</p>}
               <button onClick={() => setReportOpen(true)}
-                className="rounded-full py-2 text-xs font-medium text-zinc-400 transition hover:text-zinc-600">
+                className="flex items-center justify-center gap-1.5 rounded-full py-2 text-xs font-medium text-zinc-400 transition hover:text-zinc-600">
+                <Flag className="h-3.5 w-3.5" />
                 Пожаловаться
               </button>
+              <p className="text-center text-[11px] leading-relaxed text-zinc-400">
+                Проверяйте информацию перед сделкой. Nashlo не является стороной сделки между пользователями.
+              </p>
             </div>
           )}
         </aside>
@@ -409,5 +470,6 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
         </section>
       )}
     </main>
+    </>
   )
 }
