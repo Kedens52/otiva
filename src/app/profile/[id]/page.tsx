@@ -4,18 +4,34 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ListingCard } from "@/components/marketplace/ListingCard"
 import type { AppListing } from "@/lib/listing-types"
+import { ProfileBadgesSection } from "@/components/profile/ProfileBadgesSection"
+import { PAGE_CONTAINER_WIDE_CLASS } from "@/components/layout/PageContainer"
+import type { PublicUserBadge } from "@/lib/badges/badge-map"
 
 type Seller = {
   id: string
   name: string | null
   avatar: string | null
   description: string | null
+  profileHeadline?: string | null
   city: string | null
+  locationLabel?: string | null
+  profileTypeLabel?: string
+  sellerRoleLabel?: string | null
+  businessCategory?: string | null
+  experienceLabel?: string | null
+  serviceArea?: string | null
+  deliveryLabels?: string[]
+  guaranteeText?: string | null
+  companyName?: string | null
   isVerified: boolean
   rating: number
   reviewCount: number
   createdAt: string
+  lastSeenAt?: string | null
+  avgResponseMinutes?: number | null
   listings: AppListing[]
+  badges?: PublicUserBadge[]
   reviews: Array<{
     id: string; rating: number; text: string | null
     author: { id: string; name: string | null; avatar: string | null }
@@ -26,15 +42,40 @@ type Seller = {
 export default function PublicProfilePage({ params }: { params: { id: string } }) {
   const [seller, setSeller] = useState<Seller | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [isOwn, setIsOwn] = useState(false)
   const [copied, setCopied] = useState(false)
   const [tab, setTab] = useState<"listings" | "reviews">("listings")
 
   useEffect(() => {
-    fetch(`/api/profile/${params.id}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { setSeller(data?.seller ?? null); setLoading(false) })
-      .catch(() => setLoading(false))
+    setLoading(true)
+    setLoadError(null)
+    fetch(`/api/profile/${encodeURIComponent(params.id)}`)
+      .then(async (r) => {
+        const data = await r.json().catch(() => null)
+        if (!r.ok) {
+          setLoadError(data?.error ?? "Не удалось загрузить профиль")
+          setSeller(null)
+          return
+        }
+        const s = data?.seller
+        if (!s) {
+          setLoadError("Профиль не найден")
+          setSeller(null)
+          return
+        }
+        setSeller({
+          ...s,
+          listings: Array.isArray(s.listings) ? s.listings : [],
+          reviews: Array.isArray(s.reviews) ? s.reviews : [],
+          badges: Array.isArray(s.badges) ? s.badges : [],
+        })
+      })
+      .catch(() => {
+        setLoadError("Ошибка сети")
+        setSeller(null)
+      })
+      .finally(() => setLoading(false))
 
     fetch("/api/auth/me")
       .then((r) => r.ok ? r.json() : null)
@@ -45,12 +86,21 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
       .catch(() => {})
   }, [params.id])
 
-  if (loading) return <div className="mx-auto max-w-7xl px-4 py-20 text-center text-sm text-zinc-400">&#1047;&#1072;&#1075;&#1088;&#1091;&#1079;&#1082;&#1072;&#8230;</div>
-  if (!seller) return (
-    <div className="mx-auto max-w-7xl px-4 py-20 text-center">
-      <p className="text-2xl font-semibold text-zinc-950">&#1055;&#1088;&#1086;&#1076;&#1072;&#1074;&#1077;&#1094; &#1085;&#1077; &#1085;&#1072;&#1081;&#1076;&#1077;&#1085;</p>
-    </div>
-  )
+  if (loading) return <div className={`${PAGE_CONTAINER_WIDE_CLASS} py-20 text-center text-sm text-zinc-400`}>&#1047;&#1072;&#1075;&#1088;&#1091;&#1079;&#1082;&#1072;&#8230;</div>
+  if (!seller) {
+    return (
+      <div className={`${PAGE_CONTAINER_WIDE_CLASS} py-20 text-center`}>
+        <p className="text-2xl font-semibold text-zinc-950">
+          {loadError ?? "Продавец не найден"}
+        </p>
+        {loadError && (
+          <Link href="/profile" className="mt-4 inline-block text-sm font-semibold text-[hsl(var(--nashlo-orange))] hover:underline">
+            Вернуться в кабинет
+          </Link>
+        )}
+      </div>
+    )
+  }
 
   const initials = (seller.name ?? "П")[0].toUpperCase()
   const joinDate = new Date(seller.createdAt).toLocaleDateString("ru-RU", { month: "long", year: "numeric" })
@@ -74,7 +124,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
   )
 
   return (
-    <main>
+    <main className="bg-[#F5F6F7]">
       {/* ── MOBILE HEADER (hidden on lg) ── */}
       <div className="lg:hidden">
         <div className="bg-white px-4 pb-4 pt-6">
@@ -83,13 +133,21 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
             {seller.avatar ? (
               <img src={seller.avatar} alt="" className="h-20 w-20 shrink-0 rounded-full object-cover ring-4 ring-zinc-100" />
             ) : (
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-3xl font-semibold text-white">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--nashlo-orange))] text-3xl font-semibold text-white">
                 {initials}
               </div>
             )}
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-semibold leading-tight text-zinc-950">{seller.name ?? "Продавец"}</h1>
-              {seller.city && <p className="mt-0.5 text-sm text-zinc-500">{seller.city}</p>}
+              {seller.profileHeadline ? (
+                <p className="mt-0.5 text-sm font-medium text-zinc-700">{seller.profileHeadline}</p>
+              ) : null}
+              {(seller.locationLabel || seller.city) && (
+                <p className="mt-0.5 text-sm text-zinc-500">{seller.locationLabel || seller.city}</p>
+              )}
+              {seller.profileTypeLabel ? (
+                <p className="mt-0.5 text-xs text-zinc-400">{seller.profileTypeLabel}</p>
+              ) : null}
               <p className="mt-0.5 text-xs text-zinc-400">На сайте с {joinDate}</p>
               {seller.reviewCount > 0 && (
                 <div className="mt-1.5 flex items-center gap-1.5">
@@ -104,16 +162,27 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
             </div>
           </div>
 
-          {/* Verified badge */}
           {seller.isVerified && (
-            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+            <div className="mt-3 inline-flex w-full items-center gap-2 rounded-2xl bg-[hsl(var(--nashlo-mint)/0.12)] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--nashlo-mint))]">
               &#10003; Проверенный продавец
             </div>
           )}
 
+          <ProfileBadgesSection badges={seller.badges} showEmpty />
+
           {/* Description */}
           {seller.description && (
-            <p className="mt-3 text-sm text-zinc-500">{seller.description}</p>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-600">{seller.description}</p>
+          )}
+          {(seller.experienceLabel || seller.serviceArea) && (
+            <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-500">
+              {seller.experienceLabel ? (
+                <span className="rounded-full bg-zinc-100 px-2.5 py-1">Опыт: {seller.experienceLabel}</span>
+              ) : null}
+              {seller.serviceArea ? (
+                <span className="rounded-full bg-zinc-100 px-2.5 py-1">{seller.serviceArea}</span>
+              ) : null}
+            </div>
           )}
 
           {/* Stats row */}
@@ -122,10 +191,14 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
               <p className="text-xl font-semibold text-zinc-950">{seller.listings.length}</p>
               <p className="mt-0.5 text-xs text-zinc-500">объявлений</p>
             </div>
-            <div className="rounded-2xl bg-zinc-50 p-3 text-center">
+            <button
+              type="button"
+              onClick={() => setTab("reviews")}
+              className="rounded-2xl bg-zinc-50 p-3 text-center transition hover:bg-zinc-100"
+            >
               <p className="text-xl font-semibold text-zinc-950">{seller.reviewCount}</p>
               <p className="mt-0.5 text-xs text-zinc-500">отзывов</p>
-            </div>
+            </button>
           </div>
 
           {/* Actions */}
@@ -134,7 +207,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
               <>
                 <Link
                   href="/profile/settings"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-950 py-3 text-sm font-semibold text-white"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--nashlo-orange))] py-3 text-sm font-semibold text-white"
                 >
                   &#9998; Редактировать профиль
                 </Link>
@@ -181,7 +254,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                 <p className="text-3xl">&#128230;</p>
                 <p className="mt-3 text-sm text-zinc-400">Нет активных объявлений</p>
                 {isOwn && (
-                  <Link href="/create" className="mt-4 inline-flex items-center gap-1.5 rounded-2xl bg-zinc-950 px-5 py-2.5 text-sm font-semibold text-white">
+                  <Link href="/create" className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[hsl(var(--nashlo-orange))] px-5 py-2.5 text-sm font-semibold text-white">
                     + Разместить
                   </Link>
                 )}
@@ -223,14 +296,14 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
       </div>
 
       {/* ── DESKTOP LAYOUT (hidden on mobile) ── */}
-      <div className="mx-auto hidden max-w-7xl px-4 py-8 lg:block lg:py-12">
-        <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
+      <div className={`${PAGE_CONTAINER_WIDE_CLASS} hidden py-8 lg:block lg:py-12`}>
+        <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
           <aside className="space-y-4 lg:sticky lg:top-24 lg:h-fit">
-            <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-white/80 bg-white p-6 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
               {seller.avatar ? (
                 <img src={seller.avatar} alt="" className="h-20 w-20 rounded-full object-cover" />
               ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-zinc-950 text-3xl font-semibold text-white">{initials}</div>
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[hsl(var(--nashlo-orange))] text-3xl font-semibold text-white">{initials}</div>
               )}
               <h1 className="mt-5 text-2xl font-semibold tracking-tight text-zinc-950">{seller.name ?? "Продавец"}</h1>
               {seller.city && <p className="mt-0.5 text-sm text-zinc-500">{seller.city}</p>}
@@ -249,8 +322,12 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
               )}
 
               {seller.isVerified && (
-                <div className="mt-4 rounded-2xl bg-[hsl(var(--nashlo-mint)/0.12)] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--nashlo-mint))]">&#10003; Проверенный продавец</div>
+                <div className="mt-4 rounded-2xl bg-[hsl(var(--nashlo-mint)/0.12)] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--nashlo-mint))]">
+                  &#10003; Проверенный продавец
+                </div>
               )}
+
+              <ProfileBadgesSection badges={seller.badges} showEmpty />
 
               {seller.description && (
                 <p className="mt-4 text-sm text-zinc-500">{seller.description}</p>
@@ -260,7 +337,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                 <div className="mt-4 flex flex-col gap-2">
                   <Link
                     href="/profile/settings"
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-950 py-2.5 text-sm font-semibold text-white hover:bg-zinc-700"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--nashlo-orange))] py-2.5 text-sm font-semibold text-white hover:bg-[hsl(var(--nashlo-orange)/0.92)]"
                   >
                     &#9998; Редактировать профиль
                   </Link>
@@ -296,7 +373,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   <p className="text-3xl">&#128230;</p>
                   <p className="mt-3 text-sm text-zinc-400">Нет активных объявлений</p>
                   {isOwn && (
-                    <Link href="/create" className="mt-4 inline-flex items-center gap-1.5 rounded-2xl bg-zinc-950 px-5 py-2.5 text-sm font-semibold text-white">
+                    <Link href="/create" className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[hsl(var(--nashlo-orange))] px-5 py-2.5 text-sm font-semibold text-white">
                       + Разместить
                     </Link>
                   )}

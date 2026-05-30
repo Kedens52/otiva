@@ -1,11 +1,24 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { getActiveAd, getTrackedAdHref, trackAdClick, trackAdImpression, type AdSlotId, type ManagedAd } from "@/lib/ad-store"
+import { AdMark } from "@/components/ads/AdMark"
+import { useBannerSlot } from "@/components/ads/BannerSlotsProvider"
+import { AdMediaPreview } from "@/components/ads/AdMediaPreview"
+import { AdSlotSkeleton } from "@/components/marketplace/AdSlotSkeleton"
+import { resolveBannerSlotMedia } from "@/lib/ads/banner-slot-media"
+import {
+  getAdSlotAspectRatio,
+  getAdSlotDefinition,
+  getTrackedAdHref,
+  trackAdClick,
+  trackAdImpression,
+  type AdSlotId,
+  type ManagedAd,
+} from "@/lib/ad-store"
+import { useEffect, useRef } from "react"
 
 type AdSlotProps = {
   slot: AdSlotId
-  variant: "leaderboard" | "box" | "tall"
+  variant?: "leaderboard" | "mobileStrip" | "listingStrip" | "box" | "tall"
   tone?: "orange" | "blue"
 }
 
@@ -38,6 +51,15 @@ const fallback: Record<AdSlotId, Pick<ManagedAd, "title" | "subtitle" | "cta" | 
     erid: "",
     ordName: "",
   },
+  mobileLeaderboard: {
+    title: "Здесь может быть ваша реклама",
+    subtitle: "На главной Nashlo",
+    cta: "Разместить",
+    href: "/advertising",
+    advertiser: "Реклама",
+    erid: "",
+    ordName: "",
+  },
   sidebarTop: {
     title: "Помогите проекту расти",
     subtitle: "Ваша реклама поддерживает развитие сервиса и помогает нам делать поиск лучше.",
@@ -56,32 +78,39 @@ const fallback: Record<AdSlotId, Pick<ManagedAd, "title" | "subtitle" | "cta" | 
     erid: "",
     ordName: "",
   },
+  listingSidebar: {
+    title: "Здесь может быть ваша реклама",
+    subtitle: "Под карточкой объявления",
+    cta: "Подробнее",
+    href: "/advertising",
+    advertiser: "Реклама",
+    erid: "",
+    ordName: "",
+  },
 }
 
-export function AdSlot({ slot, variant, tone = "orange" }: AdSlotProps) {
-  const [ad, setAd] = useState<ManagedAd | null>(null)
+export function AdSlot({ slot, variant: variantProp, tone: toneProp }: AdSlotProps) {
+  const { ad, ready } = useBannerSlot(slot)
+  const impressionSent = useRef<string | null>(null)
+
+  const slotDef = getAdSlotDefinition(slot)
+  const variant = variantProp ?? slotDef.variant
+  const tone = toneProp ?? slotDef.tone
   const styles = toneClasses[tone]
+
+  useEffect(() => {
+    if (!ready || !ad?.id || impressionSent.current === ad.id) return
+    impressionSent.current = ad.id
+    trackAdImpression(ad.id)
+  }, [ready, ad?.id])
+
+  if (!ready) {
+    return <AdSlotSkeleton slot={slot} variant={variant} />
+  }
+
   const data = ad ?? fallback[slot]
   const isManaged = Boolean(ad)
-
-  useEffect(() => {
-    function reload() {
-      setAd(getActiveAd(slot))
-    }
-
-    reload()
-    window.addEventListener("nashlo-ads-change", reload)
-    window.addEventListener("storage", reload)
-    return () => {
-      window.removeEventListener("nashlo-ads-change", reload)
-      window.removeEventListener("storage", reload)
-    }
-  }, [slot])
-
-  useEffect(() => {
-    if (!ad?.id) return
-    trackAdImpression(ad.id)
-  }, [ad?.id])
+  const disclosureMark = ad?.disclosureMark ?? "ad"
 
   const href = ad ? getTrackedAdHref(ad) : data.href
 
@@ -90,17 +119,75 @@ export function AdSlot({ slot, variant, tone = "orange" }: AdSlotProps) {
   }
 
   if (isManaged && ad?.image) {
-    const sizeClass = variant === "leaderboard" ? "h-[96px]" : variant === "tall" ? "h-[300px]" : "h-[250px]"
+    const rounded =
+      variant === "mobileStrip" || variant === "listingStrip"
+        ? "rounded-[16px]"
+        : variant === "leaderboard"
+          ? "rounded-3xl"
+          : "rounded-2xl"
+    const { mediaType, mediaUrl } = resolveBannerSlotMedia(ad)
+
+    return (
+      <a
+        key={ad.id}
+        href={href}
+        onClick={handleClick}
+        className={`group relative block w-full overflow-hidden border border-zinc-200 bg-zinc-100 shadow-[0_1px_6px_rgba(17,24,39,0.035)] transition hover:shadow-md ${rounded}`}
+        style={{ aspectRatio: getAdSlotAspectRatio(slotDef) }}
+        title={data.title}
+        aria-label={data.title}
+      >
+        <AdMark kind={disclosureMark} />
+        <AdMediaPreview
+          mediaType={mediaType}
+          mediaUrl={mediaUrl}
+          mediaAlt={data.title}
+          aspectClass="h-full w-full"
+          showVideoControls={false}
+          className="h-full transition duration-300 group-hover:scale-[1.01]"
+        />
+      </a>
+    )
+  }
+
+  if (variant === "mobileStrip" || variant === "listingStrip") {
+    const compact = variant === "listingStrip"
 
     return (
       <a
         href={href}
         onClick={handleClick}
-        className={`group block w-full overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition hover:shadow-md ${sizeClass}`}
+        className={`group relative flex w-full items-center justify-between overflow-hidden border border-zinc-200 bg-[linear-gradient(135deg,rgba(249,250,251,1),rgba(255,255,255,1))] shadow-[0_1px_6px_rgba(17,24,39,0.06)] transition hover:border-zinc-300 hover:shadow-md ${
+          compact ? "rounded-xl px-3 py-2.5" : "rounded-[16px] px-4 py-3"
+        }`}
+        style={{ aspectRatio: getAdSlotAspectRatio(slotDef) }}
         title={data.title}
-        aria-label={data.title}
       >
-        <img src={ad.image} alt={data.title} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
+        <AdMark kind={disclosureMark} />
+        <div className="min-w-0 flex-1 pr-2">
+          <p
+            className={`line-clamp-2 font-semibold leading-snug text-zinc-950 ${
+              compact ? "text-[13px]" : "text-[15px]"
+            }`}
+          >
+            {data.title}
+          </p>
+          {data.subtitle ? (
+            <p className={`mt-0.5 line-clamp-1 text-zinc-500 ${compact ? "text-[11px]" : "text-[12px]"}`}>
+              {data.subtitle}
+            </p>
+          ) : null}
+        </div>
+        <span
+          className={`shrink-0 rounded-[10px] bg-[hsl(var(--nashlo-orange))] font-semibold text-white ${
+            compact ? "px-2.5 py-1 text-[11px]" : "px-3 py-1.5 text-[12px]"
+          }`}
+        >
+          {data.cta}
+        </span>
+        {isManaged && data.erid ? (
+          <span className="absolute bottom-1 right-2 text-[9px] text-zinc-400">{data.erid}</span>
+        ) : null}
       </a>
     )
   }
@@ -110,9 +197,11 @@ export function AdSlot({ slot, variant, tone = "orange" }: AdSlotProps) {
       <a
         href={href}
         onClick={handleClick}
-        className={`group relative flex min-h-[96px] w-full items-center justify-between overflow-hidden rounded-3xl border px-8 shadow-sm transition hover:shadow-md ${styles.border} ${styles.bg}`}
+        className={`group relative flex w-full items-center justify-between overflow-hidden rounded-3xl border px-4 py-3 shadow-sm transition hover:shadow-md sm:px-8 ${styles.border} ${styles.bg}`}
+        style={{ aspectRatio: getAdSlotAspectRatio(slotDef) }}
         title={data.title}
       >
+        <AdMark kind={disclosureMark} />
         <div className="flex min-w-0 items-center gap-4">
           {isManaged && ad?.image ? (
             <img src={ad.image} alt="" className="h-16 w-24 shrink-0 rounded-2xl object-cover shadow-sm" />
@@ -139,9 +228,11 @@ export function AdSlot({ slot, variant, tone = "orange" }: AdSlotProps) {
     <a
       href={href}
       onClick={handleClick}
-      className={`group relative flex w-full flex-col items-center justify-center overflow-hidden rounded-3xl border px-5 text-center shadow-sm transition hover:shadow-md ${variant === "tall" ? "h-[300px]" : "h-[250px]"} ${styles.border} ${styles.bg}`}
+      className={`group relative flex w-full flex-col items-center justify-center overflow-hidden rounded-2xl border px-5 text-center shadow-sm transition hover:shadow-md ${styles.border} ${styles.bg}`}
+      style={{ aspectRatio: getAdSlotAspectRatio(slotDef) }}
       title={data.title}
     >
+      <AdMark kind={disclosureMark} />
       {isManaged && ad?.image ? (
         <img src={ad.image} alt="" className="mb-4 h-24 w-full rounded-2xl object-cover shadow-sm" />
       ) : (

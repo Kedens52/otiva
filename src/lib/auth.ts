@@ -2,9 +2,16 @@
 import { cookies } from 'next/headers'
 import { prisma } from './prisma'
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'fallback-secret-change-in-production'
-)
+function getJwtSecret(): Uint8Array {
+  const configured = process.env.JWT_SECRET?.trim()
+  if (configured) {
+    return new TextEncoder().encode(configured)
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET is required in production")
+  }
+  return new TextEncoder().encode("dev-secret-change-before-production")
+}
 
 export const COOKIE_NAME = 'nashlo_token'
 export const COOKIE_OPTIONS = {
@@ -26,12 +33,12 @@ export async function signToken(payload: JWTPayload): Promise<string> {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('30d')
-    .sign(JWT_SECRET)
+    .sign(getJwtSecret())
 }
 
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET)
+    const { payload } = await jwtVerify(token, getJwtSecret())
     return payload as unknown as JWTPayload
   } catch {
     return null
@@ -58,15 +65,25 @@ export async function getCurrentUser() {
       vkId: true,
       yandexId: true,
       name: true,
+      firstName: true,
+      lastName: true,
       avatar: true,
       description: true,
       city: true,
       role: true,
       isVerified: true,
       isBanned: true,
+      walletBalance: true,
       rating: true,
       reviewCount: true,
       createdAt: true,
+      trustTier: true,
+      profileType: true,
+      companyName: true,
+      emailVerified: true,
+      emailVerifiedAt: true,
+      phoneVerifiedAt: true,
+      lastLoginAt: true,
     },
   })
 

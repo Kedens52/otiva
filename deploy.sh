@@ -16,6 +16,13 @@ echo "🚀 Начинаем деплой на $SERVER:$REMOTE_PATH"
 echo ""
 
 # 1. Упаковываем и загружаем файлы (исключаем node_modules, .next, uploads)
+OAUTH_ENV_FILE="$LOCAL_PATH/deploy/oauth.production.env"
+if [ ! -f "$OAUTH_ENV_FILE" ]; then
+  echo "⚠️  deploy/oauth.production.env не найден — OAuth на сервере не обновится."
+  echo "    Скопируйте: cp deploy/oauth.production.env.example deploy/oauth.production.env"
+  echo ""
+fi
+
 echo "📦 Упаковываем файлы..."
 tar --exclude=".next" \
     --exclude="node_modules" \
@@ -23,6 +30,7 @@ tar --exclude=".next" \
     --exclude="public/uploads" \
     --exclude=".env" \
     --exclude=".env.local" \
+    --exclude=".env.production" \
     --exclude="deploy.sh" \
     -czf "$DEPLOY_ARCHIVE" -C "$LOCAL_PATH" .
 
@@ -50,58 +58,22 @@ echo ""
 echo "✅ Файлы загружены"
 echo ""
 
-# 2. На сервере: создать папку, распаковать, установить, билдить, перезапустить
+if [ -f "$OAUTH_ENV_FILE" ]; then
+  echo "🔐 Загружаем OAuth env..."
+  ssh $SSH_OPTS "$SERVER" "mkdir -p $REMOTE_PATH/deploy"
+  if command -v cygpath >/dev/null 2>&1; then
+    OAUTH_ENV_SCP="$(cygpath -w "$OAUTH_ENV_FILE")"
+    MSYS2_ARG_CONV_EXCL='*' scp $SSH_OPTS "$OAUTH_ENV_SCP" "$SERVER:$REMOTE_PATH/deploy/oauth.production.env"
+  else
+    scp $SSH_OPTS "$OAUTH_ENV_FILE" "$SERVER:$REMOTE_PATH/deploy/oauth.production.env"
+  fi
+  echo "✅ OAuth env на сервере"
+  echo ""
+fi
+
+# 2. На сервере: распаковка, сборка, nginx, SEO check
 echo "🔧 Запускаем сборку на сервере..."
-ssh $SSH_OPTS "$SERVER" << 'REMOTE'
-  set -e
-
-  echo ""
-  echo "=== Создаём папку проекта (если не существует) ==="
-  mkdir -p /root/OTIVA
-
-  echo ""
-  echo "=== Очищаем дерево проекта (кроме .env* и public/) — иначе tar оставляет удалённые файлы и ломает Next.js; public/ хранит uploads вне архива ==="
-  find /root/OTIVA -mindepth 1 -maxdepth 1 ! -name ".env" ! -name ".env.local" ! -name ".env.production" ! -name "public" -exec rm -rf {} +
-
-  echo ""
-  echo "=== Распаковываем файлы ==="
-  tar -xzf /tmp/otiva_deploy.tar.gz -C /root/OTIVA
-  rm /tmp/otiva_deploy.tar.gz
-
-  echo ""
-  echo "=== Переходим в папку проекта ==="
-  cd /root/OTIVA
-
-  echo ""
-  echo "=== npm install ==="
-  npm install --legacy-peer-deps
-
-  echo ""
-  echo "=== Prisma: генерация клиента и применение миграций ==="
-  npx prisma generate
-  echo "Prisma: сброс записи об упавшей миграции 20260512140000_support_auto_replies (P3009), если есть"
-  npx prisma migrate resolve --rolled-back "20260512140000_support_auto_replies" 2>/dev/null || true
-  npx prisma migrate deploy
-
-  echo ""
-  echo "=== Seed categories ==="
-  npx ts-node --compiler-options '{"module":"CommonJS"}' prisma/seed.ts 2>/dev/null || echo "(seed skipped)"
-
-  echo ""
-  echo "=== npm build ==="
-  npm run build
-
-  echo ""
-  echo "=== Перезапуск PM2 ==="
-  pm2 restart otiva --update-env 2>/dev/null || pm2 start npm --name otiva -- start
-
-  echo ""
-  echo "=== Статус ==="
-  pm2 status
-
-  echo ""
-  echo "✅ Деплой завершён успешно!"
-REMOTE
+ssh $SSH_OPTS "$SERVER" "bash -s" < "$LOCAL_PATH/scripts/deploy-remote.sh"
 
 if [ $? -ne 0 ]; then
   echo "❌ Ошибка при сборке на сервере"

@@ -7,11 +7,13 @@ import {
   OWNER_INN,
   OWNER_OGRNIP,
 } from "@/lib/legal-meta"
+import { buildPageMetadata } from "@/lib/seo/site"
 
-export const metadata: Metadata = {
-  title: "Условия платных услуг (оферта) — Nashlo",
-  description: "Договор об оказании платных услуг сервиса Nashlo по продвижению объявлений.",
-}
+export const metadata: Metadata = buildPageMetadata({
+  title: "Условия платных услуг (общая оферта) — Нашло",
+  description: "Общие условия платных услуг сервиса Нашло. Специализированные оферты — на продвижение и рекламу.",
+  path: "/legal/offer",
+})
 
 export default function OfferPage() {
   return (
@@ -34,7 +36,21 @@ export default function OfferPage() {
         </p>
       </section>
       <section>
-        <h2 className="text-base font-semibold text-zinc-950">2. Предмет</h2>
+        <h2 className="text-base font-semibold text-zinc-950">2. Специализированные оферты</h2>
+        <p className="mt-3">
+          Продвижение объявлений регулируется{" "}
+          <Link href={LEGAL_LINKS.promotionOffer} className="underline underline-offset-2">
+            офертой на платное продвижение
+          </Link>
+          ; размещение рекламы —{" "}
+          <Link href={LEGAL_LINKS.advertisingOffer} className="underline underline-offset-2">
+            офертой на рекламные услуги
+          </Link>
+          . При расхождении положений приоритет имеет специализированный документ для соответствующей услуги.
+        </p>
+      </section>
+      <section>
+        <h2 className="text-base font-semibold text-zinc-950">3. Предмет</h2>
         <p className="mt-3">
           Исполнитель предоставляет пользователю за вознаграждение технические услуги по повышению видимости объявления в рамках
           Сервиса (например, поднятие в выдаче, выделение, закрепление, комплексные пакеты), в объёме и на срок, выбранные в интерфейсе.
@@ -45,7 +61,7 @@ export default function OfferPage() {
         </p>
       </section>
       <section>
-        <h2 className="text-base font-semibold text-zinc-950">3. Акцепт и оплата</h2>
+        <h2 className="text-base font-semibold text-zinc-950">4. Акцепт и оплата</h2>
         <p className="mt-3">
           Акцепт оферты совершается совершением оплаты или списанием средств с внутреннего баланса пользователя в интерфейсе Сервиса.
           Оплата может проводиться через подключённого платёжного провайдера; реквизиты банковских карт обрабатываются платёжной
@@ -53,14 +69,14 @@ export default function OfferPage() {
         </p>
       </section>
       <section>
-        <h2 className="text-base font-semibold text-zinc-950">4. Момент оказания услуги</h2>
+        <h2 className="text-base font-semibold text-zinc-950">5. Момент оказания услуги</h2>
         <p className="mt-3">
           Услуга считается оказанной с момента активации соответствующих технических функций в отношении объявления в системе Сервиса,
           если иное не указано в интерфейсе.
         </p>
       </section>
       <section>
-        <h2 className="text-base font-semibold text-zinc-950">5. Возвраты</h2>
+        <h2 className="text-base font-semibold text-zinc-950">6. Возвраты</h2>
         <p className="mt-3">
           Возврат денежных средств возможен в случаях, предусмотренных законодательством РФ, либо при технической невозможности
           оказания услуги по вине Исполнителя. Запрос направляется через{" "}
@@ -71,14 +87,14 @@ export default function OfferPage() {
         </p>
       </section>
       <section>
-        <h2 className="text-base font-semibold text-zinc-950">6. Изменение тарифов</h2>
+        <h2 className="text-base font-semibold text-zinc-950">7. Изменение тарифов</h2>
         <p className="mt-3">
           Исполнитель вправе изменять стоимость и состав платных функций с отображением актуальных условий в интерфейсе. Уже
           оплаченные периоды, как правило, сохраняют параметры на срок действия, если иное не указано при изменении.
         </p>
       </section>
       <section>
-        <h2 className="text-base font-semibold text-zinc-950">7. Ограничение ответственности</h2>
+        <h2 className="text-base font-semibold text-zinc-950">8. Ограничение ответственности</h2>
         <p className="mt-3">
           Исполнитель не отвечает за экономический результат размещения объявления (количество сделок, откликов). Ответственность
           Сервиса по платным услугам ограничивается суммой фактически уплаченного вознаграждения за соответствующую операцию, если иное
@@ -86,7 +102,7 @@ export default function OfferPage() {
         </p>
       </section>
       <section>
-        <h2 className="text-base font-semibold text-zinc-950">8. Реквизиты и контакты</h2>
+        <h2 className="text-base font-semibold text-zinc-950">9. Реквизиты и контакты</h2>
         <p className="mt-3">
           Реквизиты — на странице{" "}
           <Link href={LEGAL_LINKS.requisites} className="underline underline-offset-2">

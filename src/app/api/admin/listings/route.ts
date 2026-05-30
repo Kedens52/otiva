@@ -1,43 +1,48 @@
-import { NextRequest, NextResponse } from "next/server"
-import { cookies } from "next/headers"
+﻿import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { prisma } from "@/lib/prisma"
+import { withAdminApi } from "@/lib/admin/guards"
+import { writeAudit, AuditAction } from "@/lib/admin/audit"
+import { extractIp, extractUA } from "@/lib/admin/getRequestMeta"
+import { syncUserTrustSnapshot } from "@/lib/trust-tier"
+import { syncListingSlug } from "@/lib/seo/sync-listing-slug"
+import { notifyListingSearchIndex } from "@/lib/seo/notify-search-index"
 
-const ADMIN_COOKIE = "nashlo_admin_session"
+export const dynamic = "force-dynamic"
 
-function adminToken() {
-  if (process.env.NASHLO_ADMIN_TOKEN) return process.env.NASHLO_ADMIN_TOKEN
-  if (process.env.NODE_ENV === "production") return null
-  return "nashlo-local-developer"
-}
+const listingStatusSchema = z.enum(["MODERATION", "ACTIVE", "REJECTED", "ARCHIVED", "SOLD"])
+const listingActionSchema = z.object({
+  listingId: z.string().min(1),
+  action: z.enum(["APPROVED", "REJECTED", "NEEDS_REVISION"]),
+  reason: z.string().trim().max(500).optional(),
+  moderationReasonCode: z.string().trim().max(64).optional(),
+})
 
-function isAuthed(request: NextRequest) {
-  const cookieStore = cookies()
-  const token = cookieStore.get(ADMIN_COOKIE)?.value
-  const expected = adminToken()
-  return expected && token === expected
-}
-
-export async function GET(request: NextRequest) {
-  if (!isAuthed(request)) return NextResponse.json({ error: "Нет доступа" }, { status: 403 })
-
+export const GET = withAdminApi(async ({ req }) => {
   try {
-    const { searchParams } = request.nextUrl
-    const status = (searchParams.get("status") || "MODERATION") as "MODERATION" | "ACTIVE" | "REJECTED" | "ARCHIVED" | "SOLD"
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
+    const { searchParams } = req.nextUrl
+    const status = listingStatusSchema.parse(searchParams.get("status") || "MODERATION")
+    const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10))
+    const search = searchParams.get("search") ?? ""
     const take = 50
+
+    const where = search
+      ? { status, title: { contains: search, mode: "insensitive" as const } }
+      : { status }
 
     const [items, total] = await Promise.all([
       prisma.listing.findMany({
-        where: { status },
+        where,
         include: {
           seller: { select: { id: true, name: true, phone: true, city: true } },
           category: { select: { slug: true, nameRu: true } },
+          priceInsight: { select: { status: true, min: true, max: true, sampleSize: true, reason: true } },
         },
         orderBy: { createdAt: "asc" },
         skip: (page - 1) * take,
         take,
       }),
-      prisma.listing.count({ where: { status } }),
+      prisma.listing.count({ where }),
     ])
 
     return NextResponse.json({ ok: true, items, total, page })
@@ -45,28 +50,104 @@ export async function GET(request: NextRequest) {
     console.error("admin listings GET error:", error)
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 })
   }
-}
+}, "listings.view")
 
-export async function POST(request: NextRequest) {
-  if (!isAuthed(request)) return NextResponse.json({ error: "Нет доступа" }, { status: 403 })
-
+export const POST = withAdminApi(async ({ staff, req }) => {
   try {
-    const body = await request.json()
-    const { listingId, action } = body
+    const { listingId, action, reason, moderationReasonCode } = listingActionSchema.parse(await req.json())
 
-    if (!listingId || !["APPROVED", "REJECTED"].includes(action)) {
-      return NextResponse.json({ error: "Неверные данные" }, { status: 400 })
+    const rejectionReason = reason?.trim() || null
+    if (action !== "APPROVED" && !rejectionReason) {
+      return NextResponse.json({ error: "Укажите причину" }, { status: 400 })
     }
 
-    const newStatus = action === "APPROVED" ? "ACTIVE" : "REJECTED"
+    const listing = await prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { sellerId: true },
+    })
+    if (!listing) {
+      return NextResponse.json({ error: "Не найдено" }, { status: 404 })
+    }
+
+    if (action === "APPROVED") {
+      await prisma.listing.update({
+        where: { id: listingId },
+        data: {
+          status: "ACTIVE",
+          rejectionReason: null,
+          moderationReasonCode: null,
+          returnedForRevision: false,
+        },
+      })
+      await prisma.moderationLog.create({
+        data: { listingId, staffId: staff.id, action: "APPROVED", reason: null },
+      }).catch(console.error)
+      await writeAudit({
+        actorId: staff.id,
+        action: AuditAction.ADMIN_LISTING_APPROVED,
+        targetType: "Listing",
+        targetId: listingId,
+        metadata: { status: "ACTIVE" },
+        ip: extractIp(req),
+        userAgent: extractUA(req),
+      })
+      void syncUserTrustSnapshot(listing.sellerId)
+      void syncListingSlug(listingId).catch(() => {})
+      void notifyListingSearchIndex(listingId)
+      return NextResponse.json({ ok: true, listingId, action, newStatus: "ACTIVE" })
+    }
+
+    if (action === "NEEDS_REVISION") {
+      await prisma.listing.update({
+        where: { id: listingId },
+        data: {
+          status: "MODERATION",
+          rejectionReason,
+          moderationReasonCode: moderationReasonCode ?? null,
+          returnedForRevision: true,
+        },
+      })
+      await prisma.moderationLog.create({
+        data: { listingId, staffId: staff.id, action: "FLAGGED", reason: rejectionReason },
+      }).catch(console.error)
+      await writeAudit({
+        actorId: staff.id,
+        action: AuditAction.ADMIN_LISTING_REJECTED,
+        targetType: "Listing",
+        targetId: listingId,
+        metadata: { status: "MODERATION", needsRevision: true, reason: rejectionReason, moderationReasonCode },
+        ip: extractIp(req),
+        userAgent: extractUA(req),
+      })
+      void syncUserTrustSnapshot(listing.sellerId)
+      return NextResponse.json({ ok: true, listingId, action, newStatus: "MODERATION" })
+    }
+
     await prisma.listing.update({
       where: { id: listingId },
-      data: { status: newStatus },
+      data: {
+        status: "REJECTED",
+        rejectionReason,
+        moderationReasonCode: moderationReasonCode ?? null,
+        returnedForRevision: false,
+      },
     })
-
-    return NextResponse.json({ ok: true, listingId, action, newStatus })
+    await prisma.moderationLog.create({
+      data: { listingId, staffId: staff.id, action: "REJECTED", reason: rejectionReason },
+    }).catch(console.error)
+    await writeAudit({
+      actorId: staff.id,
+      action: AuditAction.ADMIN_LISTING_REJECTED,
+      targetType: "Listing",
+      targetId: listingId,
+      metadata: { status: "REJECTED", reason: rejectionReason, moderationReasonCode },
+      ip: extractIp(req),
+      userAgent: extractUA(req),
+    })
+    void syncUserTrustSnapshot(listing.sellerId)
+    return NextResponse.json({ ok: true, listingId, action, newStatus: "REJECTED" })
   } catch (error) {
     console.error("admin listings POST error:", error)
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 })
   }
-}
+}, "listings.moderate")

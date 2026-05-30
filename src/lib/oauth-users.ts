@@ -10,6 +10,8 @@ type OAuthProfile = {
   email?: string | null
   phone?: string | null
   name?: string | null
+  firstName?: string | null
+  lastName?: string | null
   avatar?: string | null
   city?: string | null
 }
@@ -17,6 +19,15 @@ type OAuthProfile = {
 type Tx = Prisma.TransactionClient
 type SyncOptions = {
   preferredUserId?: string | null
+  /** Вызывается перед созданием нового пользователя (rate limit регистрации). */
+  assertCanRegister?: () => void | Promise<void>
+}
+
+export class RegistrationRateLimitError extends Error {
+  constructor() {
+    super("registration_rate_limit")
+    this.name = "RegistrationRateLimitError"
+  }
 }
 
 function clean(value?: string | null) {
@@ -123,23 +134,62 @@ function pickMergedUserData(primary: User, duplicates: User[], profile: OAuthPro
     ? profile.providerId
     : primary.yandexId || all.find((user) => user.yandexId)?.yandexId || null
 
+  const freshAvatar = clean(profile.avatar)
+  const resolvedEmail = primary.email || email || all.find((user) => user.email)?.email || null
+  const resolvedPhone = primary.phone || phone || all.find((user) => user.phone)?.phone || null
+
+  const oauthName = clean(profile.name)
+  const composedFromParts =
+    [clean(profile.firstName), clean(profile.lastName)].filter(Boolean).join(" ").trim() || null
+
+  const name =
+    oauthName ||
+    composedFromParts ||
+    primary.name ||
+    all.find((user) => user.name)?.name ||
+    null
+
+  const firstName =
+    clean(profile.firstName) ||
+    primary.firstName ||
+    all.find((user) => user.firstName)?.firstName ||
+    null
+
+  const lastName =
+    clean(profile.lastName) ||
+    primary.lastName ||
+    all.find((user) => user.lastName)?.lastName ||
+    null
+
   return {
     vkId,
     yandexId,
-    email: primary.email || email || all.find((user) => user.email)?.email || null,
-    phone: primary.phone || phone || all.find((user) => user.phone)?.phone || null,
-    name: primary.name || clean(profile.name) || all.find((user) => user.name)?.name || null,
-    avatar: primary.avatar || clean(profile.avatar) || all.find((user) => user.avatar)?.avatar || null,
+    email: resolvedEmail,
+    phone: resolvedPhone,
+    name,
+    firstName,
+    lastName,
+    avatar: freshAvatar || primary.avatar || all.find((user) => user.avatar)?.avatar || null,
     city: primary.city || clean(profile.city) || all.find((user) => user.city)?.city || null,
-    isVerified: primary.isVerified || Boolean(phone) || all.some((user) => user.isVerified),
+    isVerified: primary.isVerified || Boolean(resolvedPhone) || profile.provider === "vk" || all.some((user) => user.isVerified),
+    emailVerified: primary.emailVerified || Boolean(resolvedEmail),
+    phoneVerifiedAt: primary.phoneVerifiedAt || (resolvedPhone ? new Date() : undefined),
+    lastLoginAt: new Date(),
   }
 }
 
 export async function findOrCreateOAuthUser(profile: OAuthProfile, options: SyncOptions = {}) {
-  const providerId = profile.providerId
+  const providerId = profile.providerId?.trim()
+  if (!providerId) {
+    throw new Error("missing_provider_id")
+  }
   const email = clean(profile.email)?.toLowerCase() ?? null
   const phone = cleanPhone(profile.phone)
   const name = clean(profile.name)
+  const firstName = clean(profile.firstName)
+  const lastName = clean(profile.lastName)
+  const composedName =
+    name || [firstName, lastName].filter(Boolean).join(" ").trim() || null
   const avatar = clean(profile.avatar)
   const city = clean(profile.city)
   const providerCreate = providerCreateData(profile.provider, providerId)
@@ -158,16 +208,24 @@ export async function findOrCreateOAuthUser(profile: OAuthProfile, options: Sync
     })
 
     if (!users.length) {
-      return tx.user.create({
+      await options.assertCanRegister?.()
+      const user = await tx.user.create({
         data: {
           ...providerCreate,
           email,
           phone,
-          name,
+          name: composedName,
+          firstName,
+          lastName,
           avatar,
           city,
+          isVerified: Boolean(phone) || profile.provider === "vk",
+          emailVerified: Boolean(email),
+          phoneVerifiedAt: phone ? new Date() : undefined,
+          lastLoginAt: new Date(),
         },
       })
+      return { user, isNew: true }
     }
 
     const primary = pickPrimary(users, profile, email, phone, options.preferredUserId)
@@ -178,10 +236,11 @@ export async function findOrCreateOAuthUser(profile: OAuthProfile, options: Sync
       await mergeUserIntoPrimary(tx, primary.id, duplicate.id)
     }
 
-    return tx.user.update({
+    const user = await tx.user.update({
       where: { id: primary.id },
       data: mergedData,
     })
+    return { user, isNew: false }
   })
 }
 
@@ -201,6 +260,7 @@ export async function findOrCreatePhoneUser(phoneInput: string, options: SyncOpt
     })
 
     if (!users.length) {
+      await options.assertCanRegister?.()
       const user = await tx.user.create({
         data: {
           phone,
@@ -218,9 +278,12 @@ export async function findOrCreatePhoneUser(phoneInput: string, options: SyncOpt
       email: primary.email || duplicates.find((user) => user.email)?.email || null,
       phone,
       name: primary.name || duplicates.find((user) => user.name)?.name || null,
+      firstName: primary.firstName || duplicates.find((user) => user.firstName)?.firstName || null,
+      lastName: primary.lastName || duplicates.find((user) => user.lastName)?.lastName || null,
       avatar: primary.avatar || duplicates.find((user) => user.avatar)?.avatar || null,
       city: primary.city || duplicates.find((user) => user.city)?.city || null,
       isVerified: true,
+      lastLoginAt: new Date(),
     }
 
     for (const duplicate of duplicates) {

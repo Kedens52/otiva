@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { getAdminCsrfFromDocument } from "@/lib/admin/csrf-client"
+import { AdminPageHeader } from "@/components/admin/layout/AdminPageHeader"
+import { AdminPageShell } from "@/components/admin/layout/AdminPageShell"
+import { AdminStatusBadge } from "@/components/admin/ui/AdminStatusBadge"
 
 type Client = {
   id: string
@@ -16,24 +19,6 @@ type Client = {
   assignedManager: { displayName: string | null; login: string } | null
   _count: { deals: number; businessNotes: number }
 }
-
-const STATUS_LABEL: Record<string, string> = {
-  NEW:          "Новый",
-  CONTACTED:    "Связались",
-  NEGOTIATING:  "Переговоры",
-  ACTIVE_CLIENT:"Активный",
-  PAUSED:       "Пауза",
-  LOST:         "Потерян",
-}
-const STATUS_COLOR: Record<string, string> = {
-  NEW:           "bg-blue-50 text-blue-700",
-  CONTACTED:     "bg-amber-50 text-amber-700",
-  NEGOTIATING:   "bg-purple-50 text-purple-700",
-  ACTIVE_CLIENT: "bg-emerald-50 text-emerald-700",
-  PAUSED:        "bg-zinc-100 text-zinc-500",
-  LOST:          "bg-red-50 text-red-600",
-}
-
 
 export default function AdminBusinessPage() {
   const [items,   setItems]   = useState<Client[]>([])
@@ -74,19 +59,19 @@ export default function AdminBusinessPage() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Бизнес CRM</h1>
-          <p className="mt-2 text-zinc-500">Рекламодатели и бизнес-клиенты. Всего: {total}</p>
-        </div>
-        <button
-          onClick={() => setShowAdd((v) => !v)}
-          className="rounded-2xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
-        >
-          + Добавить клиента
-        </button>
-      </div>
+    <AdminPageShell className="py-8">
+      <AdminPageHeader
+        title="Бизнес CRM"
+        description={`Рекламодатели и бизнес-клиенты. Всего: ${total}`}
+        actions={
+          <button
+            onClick={() => setShowAdd((v) => !v)}
+            className="rounded-2xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+          >
+            + Добавить клиента
+          </button>
+        }
+      />
 
       {showAdd && (
         <div className="mt-4 flex gap-3 rounded-2xl border border-zinc-200 bg-white p-4">
@@ -146,9 +131,7 @@ export default function AdminBusinessPage() {
                     {client.assignedManager && ` · ${client.assignedManager.displayName ?? client.assignedManager.login}`}
                   </p>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_COLOR[client.status] ?? "bg-zinc-100 text-zinc-500"}`}>
-                  {STATUS_LABEL[client.status] ?? client.status}
-                </span>
+                <AdminStatusBadge variant="business" status={client.status} />
                 <span className="text-xs text-zinc-400">
                   {new Date(client.createdAt).toLocaleDateString("ru-RU")}
                 </span>
@@ -157,6 +140,6 @@ export default function AdminBusinessPage() {
           </div>
         )}
       </div>
-    </main>
+    </AdminPageShell>
   )
 }

@@ -1,10 +1,41 @@
 import Link from "next/link"
+import { CookiePreferencesPanel } from "@/components/legal/CookieBanner"
+import { LegalStandaloneShell } from "@/components/legal/LegalStandaloneShell"
+import { ResponsiveTableCards } from "@/components/ui/ResponsiveTableCards"
 
 export const metadata = { title: "Политика cookies — Нашло" }
 
+const COOKIE_ROWS = [
+  {
+    name: "nashlo_admin_session",
+    type: "Необходимый",
+    purpose: "Сессия администратора",
+  },
+  {
+    name: "nashlo-city",
+    type: "Функциональный",
+    purpose: "Выбранный город (localStorage)",
+  },
+  {
+    name: "nashlo_analytics",
+    type: "Аналитический",
+    purpose: "Согласие на учёт посещений (только после «Принять все»)",
+  },
+  {
+    name: "nashlo_vid",
+    type: "Аналитический",
+    purpose: "Анонимный идентификатор посетителя для статистики",
+  },
+  {
+    name: "nashlo_session",
+    type: "Необходимый",
+    purpose: "Сессия входа пользователя",
+  },
+] as const
+
 export default function CookiesPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12 pb-28 lg:pb-12">
+    <LegalStandaloneShell>
       <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">Политика использования файлов cookie</h1>
       <p className="mt-2 text-sm text-zinc-500">Редакция от 1 января 2025 г.</p>
       <div className="mt-8 space-y-8 text-sm leading-7 text-zinc-700">
@@ -31,27 +62,23 @@ export default function CookiesPage() {
         </section>
         <section>
           <h2 className="text-base font-semibold text-zinc-950">3. Конкретные файлы cookie</h2>
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-zinc-100">
-                  <th className="py-2 pr-4 text-left font-semibold text-zinc-950">Название</th>
-                  <th className="py-2 pr-4 text-left font-semibold text-zinc-950">Тип</th>
-                  <th className="py-2 text-left font-semibold text-zinc-950">Назначение</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-50">
-                <tr><td className="py-2 pr-4 font-mono text-zinc-600">nashlo_admin_session</td><td className="py-2 pr-4">Необходимый</td><td className="py-2">Сессия администратора</td></tr>
-                <tr><td className="py-2 pr-4 font-mono text-zinc-600">nashlo-city</td><td className="py-2 pr-4">Функциональный</td><td className="py-2">Выбранный город</td></tr>
-                <tr><td className="py-2 pr-4 font-mono text-zinc-600">sb-*</td><td className="py-2 pr-4">Необходимый</td><td className="py-2">Сессия авторизации Supabase</td></tr>
-              </tbody>
-            </table>
+          <div className="mt-3">
+            <ResponsiveTableCards
+              rowKey="name"
+              columns={[
+                { key: "name", label: "Название", mono: true },
+                { key: "type", label: "Тип" },
+                { key: "purpose", label: "Назначение" },
+              ]}
+              rows={[...COOKIE_ROWS]}
+            />
           </div>
         </section>
         <section>
           <h2 className="text-base font-semibold text-zinc-950">4. Управление cookies</h2>
-          <p className="mt-3">Вы можете управлять файлами cookie через настройки браузера. Отключение необходимых cookies может привести к некорректной работе сайта. Инструкции для популярных браузеров:</p>
-          <ul className="mt-2 list-disc pl-5 space-y-1">
+          <CookiePreferencesPanel className="mt-4" />
+          <p className="mt-4">Также можно управлять cookie через настройки браузера. Отключение необходимых cookies может привести к некорректной работе сайта. Инструкции для популярных браузеров:</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>Google Chrome: Настройки → Конфиденциальность → Файлы cookie</li>
             <li>Яндекс Браузер: Настройки → Сайты → Расширенные настройки → Cookies</li>
             <li>Mozilla Firefox: Настройки → Приватность и защита → Куки и данные сайтов</li>
@@ -60,7 +87,11 @@ export default function CookiesPage() {
         </section>
         <section>
           <h2 className="text-base font-semibold text-zinc-950">5. Согласие</h2>
-          <p className="mt-3">Продолжая использовать сайт nashlo.ru, вы соглашаетесь на использование файлов cookie в соответствии с настоящей Политикой. Согласие на использование необязательных cookies вы можете отозвать в любой момент через настройки браузера.</p>
+          <p className="mt-3">
+            Необходимые cookie работают без отдельного согласия. Аналитические cookie включаются только после нажатия
+            «Принять все» в уведомлении на сайте. Отказ («Только необходимые») отключает учёт посещений в нашей
+            статистике. Согласие можно изменить в блоке настроек выше.
+          </p>
         </section>
         <section>
           <h2 className="text-base font-semibold text-zinc-950">6. Контакты</h2>
@@ -70,8 +101,7 @@ export default function CookiesPage() {
       <div className="mt-10 flex flex-wrap gap-4 text-xs text-zinc-400">
         <Link href="/terms" className="underline underline-offset-2 hover:text-zinc-700">Пользовательское соглашение</Link>
         <Link href="/privacy" className="underline underline-offset-2 hover:text-zinc-700">Политика конфиденциальности</Link>
-        <Link href="/personal-data" className="underline underline-offset-2 hover:text-zinc-700">Персональные данные</Link>
       </div>
-    </main>
+    </LegalStandaloneShell>
   )
 }

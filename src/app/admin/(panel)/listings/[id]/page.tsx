@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
+import { AdminPageBackLink } from "@/components/admin/layout/AdminPageBackLink"
+import { AdminPageShell } from "@/components/admin/layout/AdminPageShell"
+import { AdminStatusBadge } from "@/components/admin/ui/AdminStatusBadge"
 import { formatPrice } from "@/lib/listing-types"
 import { getAdminCsrfFromDocument } from "@/lib/admin/csrf-client"
 
@@ -56,25 +59,8 @@ type ListingDetail = {
   _count: { favorites: number; reports: number; conversations: number; listingViews: number }
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  MODERATION: "На проверке",
-  ACTIVE: "Активно",
-  REJECTED: "Отклонено",
-  ARCHIVED: "Архив",
-  SOLD: "Продано",
-}
-
-const STATUS_COLOR: Record<string, string> = {
-  MODERATION: "bg-amber-50 text-amber-700",
-  ACTIVE: "bg-emerald-50 text-emerald-700",
-  REJECTED: "bg-red-50 text-red-600",
-  ARCHIVED: "bg-zinc-100 text-zinc-500",
-  SOLD: "bg-blue-50 text-blue-600",
-}
-
 export default function AdminListingDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const router = useRouter()
   const [listing, setListing] = useState<ListingDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionError, setActionError] = useState("")
@@ -116,25 +102,31 @@ export default function AdminListingDetailPage() {
   }
 
   if (loading) {
-    return <div className="px-6 py-16 text-center text-sm text-zinc-400">Загрузка...</div>
+    return (
+      <AdminPageShell>
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-950" />
+        </div>
+      </AdminPageShell>
+    )
   }
 
   if (!listing) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-16 text-center">
-        <p className="text-lg font-semibold text-white">Объявление не найдено</p>
-        <button onClick={() => router.back()} className="mt-4 text-sm text-zinc-400 hover:text-white">Назад</button>
-      </div>
+      <AdminPageShell>
+        <div className="py-16 text-center">
+          <p className="text-lg font-semibold text-zinc-950">Объявление не найдено</p>
+          <AdminPageBackLink label="К объявлениям" href="/admin/listings" className="mt-4 justify-center" />
+        </div>
+      </AdminPageShell>
     )
   }
 
   const mainImage = listing.images?.[0]
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10">
-      <button onClick={() => router.back()} className="mb-5 text-sm font-semibold text-zinc-400 hover:text-white">
-        ← Назад к объявлениям
-      </button>
+    <AdminPageShell>
+      <AdminPageBackLink label="К объявлениям" href="/admin/listings" />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
@@ -149,9 +141,7 @@ export default function AdminListingDetailPage() {
 
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_COLOR[listing.status] ?? "bg-zinc-100 text-zinc-600"}`}>
-                  {STATUS_LABEL[listing.status] ?? listing.status}
-                </span>
+                <AdminStatusBadge variant="listing" status={listing.status} />
                 {listing.autoApproved && (
                   <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                     Автомодерация
@@ -321,6 +311,6 @@ export default function AdminListingDetailPage() {
           </div>
         </section>
       </div>
-    </main>
+    </AdminPageShell>
   )
 }

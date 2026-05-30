@@ -39,9 +39,9 @@ export function ReportModal({ listingId, listingTitle, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end justify-center px-4 pb-[env(safe-area-inset-bottom)] sm:items-center sm:p-0" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-zinc-950/45 backdrop-blur-sm" />
       <div
-        className="relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-t-[32px] bg-white p-5 shadow-2xl sm:rounded-[32px] sm:p-6"
+        className="relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:rounded-2xl sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Handle */}
@@ -54,7 +54,7 @@ export function ReportModal({ listingId, listingTitle, onClose }: Props) {
             <p className="mt-2 text-sm text-zinc-500">Модераторы рассмотрят её в течение 24 часов.</p>
             <button
               onClick={onClose}
-              className="mt-6 w-full rounded-2xl bg-zinc-950 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
+              className="mt-6 w-full rounded-xl bg-[hsl(var(--nashlo-orange))] py-3 text-sm font-semibold text-white transition hover:bg-[hsl(var(--nashlo-orange)/0.92)]"
             >
               Закрыть
             </button>
@@ -74,7 +74,7 @@ export function ReportModal({ listingId, listingTitle, onClose }: Props) {
                   onClick={() => setSelectedReason(r.id)}
                   className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${
                     selectedReason === r.id
-                      ? "border-zinc-950 bg-zinc-950 text-white"
+                       ? "border-[hsl(var(--nashlo-orange))] bg-[hsl(var(--nashlo-orange))] text-white"
                       : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50"
                   }`}
                 >
@@ -100,14 +100,14 @@ export function ReportModal({ listingId, listingTitle, onClose }: Props) {
             <div className="mt-5 flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 rounded-2xl border border-zinc-200 py-3 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-50"
+                  className="flex-1 rounded-xl border border-zinc-200 py-3 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-50"
               >
                 Отмена
               </button>
               <button
                 onClick={submit}
                 disabled={!selectedReason || submitting}
-                className="flex-1 rounded-2xl bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-40"
+                  className="flex-1 rounded-xl bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-40"
               >
                 {submitting ? "Отправляем…" : "Отправить жалобу"}
               </button>

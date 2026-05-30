@@ -3,26 +3,56 @@
 import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { type AppListing, categorySlug, listingHref, formatPrice, imageToneForCategory } from "@/lib/listing-types"
+import { Heart, MapPin } from "lucide-react"
+import {
+  type AppListing,
+  categorySlug,
+  listingHref,
+  formatPrice,
+  imageToneForCategory,
+  listingThumbnailSrc,
+} from "@/lib/listing-types"
+import { getListingCardChips } from "@/lib/listings/listing-card-chips"
 import { trackListingInterest } from "@/lib/recommendations"
+import { cn } from "@/lib/utils"
+import { buildListingImageAlt } from "@/lib/seo/image-alt"
 
 type ListingCardProps = {
   listing: AppListing
   href?: string
+  /** @deprecated Сетка использует единый компактный вид; оставлено для совместимости API */
   compact?: boolean
   hideFav?: boolean
 }
 
-export function ListingCard({ listing, href, compact = false, hideFav = false }: ListingCardProps) {
-  const router   = useRouter()
-  const slug     = categorySlug(listing)
-  const target   = href ?? listingHref(listing)
-  const tone     = imageToneForCategory(slug)
-  const firstImg = listing.images?.[0]
-  const isPhoto  = firstImg && (firstImg.startsWith("http") || firstImg.startsWith("/uploads"))
-  const imageSrc = isPhoto ? firstImg : `/categories/${slug}.svg`
-  const [fav, setFav] = useState(false)
+function formatCardDate(value?: string) {
+  if (!value) return "сегодня"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "сегодня"
+  return date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
+}
+
+function formatCardPrice(price: number) {
+  if (price > 0) return formatPrice(price)
+  if (price === 0) return "Бесплатно"
+  return "Цена не указана"
+}
+
+export function ListingCard({ listing, href, hideFav = false }: ListingCardProps) {
+  const router = useRouter()
+  const slug = categorySlug(listing)
+  const target = href ?? listingHref(listing)
+  const tone = imageToneForCategory(slug)
+  const { src: imageSrc, isPhoto } = listingThumbnailSrc(listing.images?.[0], slug)
+  const [fav, setFav] = useState(Boolean(listing.favorited))
   const [favPending, setFavPending] = useState(false)
+
+  const attrs = listing.attributes ?? undefined
+  const chipsMobile = getListingCardChips(attrs, slug, 3)
+  const chipsDesktop = getListingCardChips(attrs, slug, 4)
+
+  const locationLabel = listing.city || listing.district || null
+  const dateLabel = formatCardDate(listing.createdAt)
 
   async function toggleFav(e: React.MouseEvent) {
     e.preventDefault()
@@ -35,7 +65,10 @@ export function ListingCard({ listing, href, compact = false, hideFav = false }:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ listingId: listing.id }),
       })
-      if (res.status === 401) { router.push("/login"); return }
+      if (res.status === 401) {
+        router.push("/login")
+        return
+      }
       if (res.ok) {
         trackListingInterest(listing, 4)
         setFav((v) => !v)
@@ -49,69 +82,88 @@ export function ListingCard({ listing, href, compact = false, hideFav = false }:
     <Link
       href={target}
       onClick={() => trackListingInterest(listing, 2)}
-      className={`group block min-w-0 overflow-hidden bg-white transition duration-300 hover:-translate-y-1 ${
-        compact ? "rounded-2xl" : "rounded-[28px] border border-zinc-200 shadow-sm hover:shadow-xl"
-      }`}
+      className={cn(
+        "group flex h-full min-w-0 flex-col overflow-hidden rounded-[18px] border border-[rgba(15,23,42,0.06)] bg-white shadow-[0_4px_16px_rgba(15,23,42,0.04)] transition-[transform,box-shadow,border-color] duration-[180ms] ease-out",
+        "hover:-translate-y-0.5 hover:border-[rgba(255,91,31,0.14)] hover:shadow-[0_10px_28px_rgba(15,23,42,0.08)]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--nashlo-orange)/0.32)]",
+      )}
     >
-      <div className={`relative ${compact ? "h-32 rounded-2xl sm:h-40" : "h-40 sm:h-52"} overflow-hidden bg-gradient-to-br ${tone}`}>
+      <div className={cn("relative aspect-[4/3] overflow-hidden bg-gradient-to-br", tone)}>
         <img
           src={imageSrc}
-          alt={listing.title}
-          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+          alt={buildListingImageAlt(listing.title, listing.city, 0)}
+          className={cn(
+            "h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]",
+            !isPhoto && "object-contain p-6",
+          )}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent" />
-        {listing.city && (
-          <div className="absolute left-3 top-3 max-w-[calc(100%-1.5rem)] truncate rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium text-zinc-900 shadow-sm sm:left-4 sm:top-4 sm:px-3 sm:text-xs">
-            {listing.city}
-          </div>
-        )}
-        {listing.isPromoted ? (
-          <div className="absolute right-3 top-3 rounded-full bg-zinc-950 px-2.5 py-1 text-[11px] font-medium text-white shadow-sm sm:right-4 sm:top-4 sm:px-3 sm:text-xs">
+
+        {listing.isPromoted && (
+          <span className="absolute left-2.5 top-2.5 rounded-full bg-[hsl(var(--nashlo-orange))] px-[7px] py-1 text-[10px] font-semibold leading-none text-white">
             Продвигается
-          </div>
-        ) : !hideFav ? (
+          </span>
+        )}
+
+        {!hideFav && (
           <button
             type="button"
             aria-label={fav ? "Убрать из избранного" : "В избранное"}
             onClick={toggleFav}
-            className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full shadow-sm backdrop-blur-sm transition sm:right-3 sm:top-3 sm:h-9 sm:w-9 ${
-              fav
-                ? "bg-red-500/90 text-white"
-                : "bg-white/80 text-zinc-400 hover:bg-white hover:text-red-400"
-            } ${favPending ? "opacity-50" : ""}`}
+            disabled={favPending}
+            className={cn(
+              "absolute right-2 top-2 flex h-10 w-10 items-center justify-center rounded-full border border-white/90 bg-white text-zinc-600 shadow-[0_2px_8px_rgba(15,23,42,0.12)] transition hover:scale-[1.03] disabled:opacity-60 sm:right-2.5 sm:top-2.5",
+              fav && "text-[hsl(var(--nashlo-orange))]",
+            )}
           >
-            <span className="text-base leading-none">{fav ? "♥" : "♡"}</span>
+            <Heart className={cn("h-4 w-4", fav && "fill-current")} />
           </button>
-        ) : null}
+        )}
       </div>
-      <div className={compact ? "min-w-0 space-y-1 py-3" : "min-w-0 space-y-2 p-3 sm:space-y-4 sm:p-5"}>
-        <div className="min-w-0">
-          <div className={compact ? "min-w-0 space-y-1" : "min-w-0 sm:flex sm:items-start sm:justify-between sm:gap-4"}>
-            <h3 className={`${compact ? "truncate text-sm font-semibold sm:text-base" : "min-w-0 truncate text-base font-semibold sm:text-lg"} leading-tight text-zinc-950`}>
-              {listing.title}
-            </h3>
-            <span className={`${compact ? "block truncate text-sm sm:text-base" : "mt-1 block truncate text-base sm:mt-0 sm:shrink-0 sm:text-lg"} font-semibold text-zinc-950`}>
-              {formatPrice(listing.price)}
-            </span>
+
+      <div className="flex flex-1 flex-col gap-2 p-3 sm:gap-2 sm:p-3.5">
+        <p className="text-[15px] font-bold leading-tight text-[#111827] sm:text-[16px] lg:text-[18px] lg:leading-tight">
+          {formatCardPrice(listing.price)}
+        </p>
+
+        <h3 className="line-clamp-2 break-words text-[13px] font-medium leading-snug text-[#374151] sm:text-[14px] lg:text-[15px] lg:leading-snug">
+          {listing.title}
+        </h3>
+
+        {chipsMobile.length > 0 && (
+          <div className="flex flex-wrap gap-1 sm:gap-1.5 lg:hidden">
+            {chipsMobile.map((chip) => (
+              <span
+                key={chip}
+                className="rounded-full bg-[#F3F4F6] px-[7px] py-[3px] text-[11px] leading-none text-[#6B7280]"
+              >
+                {chip}
+              </span>
+            ))}
           </div>
-          {!compact && listing.description && (
-            <p className="mt-1 line-clamp-2 text-xs text-zinc-500 sm:text-sm">
-              {listing.description}
-            </p>
-          )}
-        </div>
-        {listing.seller && (
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-[10px] font-bold text-zinc-700">
-              {listing.seller.name?.slice(0, 1).toUpperCase() ?? "?"}
-            </div>
-            <span className="truncate text-xs text-zinc-500">
-              {listing.seller.name ?? "Продавец"}
-              {listing.seller.isVerified && (
-                <span className="ml-1 text-[hsl(var(--nashlo-blue))]">&#10003;</span>
-              )}
-            </span>
+        )}
+
+        {chipsDesktop.length > 0 && (
+          <div className="hidden flex-wrap gap-1.5 lg:flex">
+            {chipsDesktop.map((chip) => (
+              <span
+                key={chip}
+                className="rounded-full bg-[#F3F4F6] px-[7px] py-[3px] text-[11px] leading-none text-[#6B7280]"
+              >
+                {chip}
+              </span>
+            ))}
           </div>
+        )}
+
+        {locationLabel ? (
+          <p className="mt-auto flex min-w-0 items-center gap-1 pt-0.5 text-[11px] leading-tight text-[#8A94A6] sm:text-[11px] lg:text-xs">
+            <MapPin className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+            <span className="truncate">{locationLabel}</span>
+            <span className="shrink-0 opacity-60">·</span>
+            <span className="shrink-0">{dateLabel}</span>
+          </p>
+        ) : (
+          <p className="mt-auto pt-0.5 text-[11px] text-[#8A94A6] sm:text-[11px] lg:text-xs">{dateLabel}</p>
         )}
       </div>
     </Link>

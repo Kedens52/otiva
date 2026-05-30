@@ -2,6 +2,9 @@
 
 import Link from "next/link"
 import { useState } from "react"
+import { ChevronRight } from "lucide-react"
+import { PAGE_CONTAINER_WIDE_CLASS } from "@/components/layout/PageContainer"
+import { getWantToBuyCategoriesPath } from "@/lib/want-to-buy/routes"
 
 type SubItem = { label: string; href: string }
 type Group   = { title: string; href: string; items: SubItem[] }
@@ -447,39 +450,44 @@ function CategoryAccordion({ cat }: { cat: Category }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+    <div className={`overflow-hidden rounded-2xl border bg-white transition-shadow duration-150 ${open ? "border-white/80 shadow-[0_8px_20px_rgba(15,23,42,0.08)]" : "border-white/80 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"}`}>
       {/* Header row */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 py-4 text-left active:bg-zinc-50"
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-zinc-50"
       >
-        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-xl ${cat.color}`}>
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] text-xl ${cat.color}`}>
           {cat.emoji}
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-zinc-950">{cat.title}</p>
-          <p className="mt-0.5 truncate text-xs text-zinc-400">{cat.description}</p>
         </div>
-        <span className={`shrink-0 text-zinc-400 transition-transform duration-200 ${open ? "rotate-90" : ""}`}>›</span>
+        <ChevronRight
+          className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
+        />
       </button>
 
       {/* Expanded content */}
       {open && (
-        <div className="border-t border-zinc-100 px-4 pb-4 pt-3">
+        <div className="border-t border-zinc-100 px-4 pb-5 pt-3.5">
           {/* "Все объявления" link */}
           <Link
             href={cat.href}
-            className={`mb-4 block text-sm font-semibold ${cat.textColor} hover:underline`}
+            className={`mb-4 inline-flex items-center gap-1 text-sm font-semibold ${cat.textColor} hover:underline underline-offset-2`}
           >
-            Все объявления в категории →
+            Все объявления в категории
+            <ChevronRight className="h-3.5 w-3.5" />
           </Link>
 
           {/* Groups as flat sections */}
           <div className="space-y-4">
             {cat.groups.map((group) => (
               <div key={group.title}>
-                <Link href={group.href} className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-400 hover:text-zinc-700">
+                <Link
+                  href={group.href}
+                  className="mb-2.5 block text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400 hover:text-zinc-700 transition-colors"
+                >
                   {group.title}
                 </Link>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2">
@@ -487,7 +495,7 @@ function CategoryAccordion({ cat }: { cat: Category }) {
                     <Link
                       key={item.label}
                       href={item.href}
-                      className="text-sm text-zinc-700 hover:text-zinc-950"
+                      className="text-sm text-zinc-600 transition-colors hover:text-zinc-950"
                     >
                       {item.label}
                     </Link>
@@ -505,27 +513,42 @@ function CategoryAccordion({ cat }: { cat: Category }) {
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function CategoriesPage() {
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 pb-28 lg:pb-10 lg:py-10">
+    <main className={`${PAGE_CONTAINER_WIDE_CLASS} py-5 pb-8 lg:py-8 lg:pb-10`}>
 
       {/* Hero */}
-      <section className="mb-6 overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-950 via-zinc-800 to-[hsl(var(--nashlo-orange))] p-5 text-white sm:p-8 lg:mb-10 lg:p-10">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">Все категории</h1>
-        <p className="mt-2 text-sm leading-6 text-white/70 sm:mt-3 sm:text-base">
-          Выберите раздел и найдите нужное среди тысяч объявлений
-        </p>
-        {/* Quick chips — horizontal scroll on mobile */}
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <section className="mb-6 overflow-hidden rounded-2xl border border-white/80 bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.05)] sm:p-6 lg:mb-8">
+        <span className="inline-flex rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-[hsl(var(--nashlo-orange))]">
+          Каталог
+        </span>
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-950 sm:text-3xl">Все категории</h1>
+        {/* Quick chips — horizontal scroll */}
+        <div className="mt-5 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {ALL_CATEGORIES.map((c) => (
             <Link
               key={c.slug}
               href={c.href}
-              className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-sm font-medium text-white transition active:bg-white/25 hover:bg-white/25"
+              className="flex shrink-0 snap-start items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-white hover:text-zinc-950 active:scale-95"
             >
-              <span>{c.emoji}</span>
+              <span className="text-base leading-none">{c.emoji}</span>
               <span>{c.title}</span>
             </Link>
           ))}
         </div>
+      </section>
+
+      <section className="mb-6 rounded-[16px] border border-[rgba(15,23,42,0.06)] bg-gradient-to-r from-white to-[#FFF8F4] px-4 py-4 shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-4 sm:px-5">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[#111827]">Ищете, а не продаёте?</p>
+          <p className="mt-1 text-sm text-[#6B7280]">
+            Смотрите заявки «Куплю» по категориям или оставьте свой запрос.
+          </p>
+        </div>
+        <Link
+          href={getWantToBuyCategoriesPath()}
+          className="mt-3 inline-flex shrink-0 items-center justify-center rounded-xl border border-[#FF5A00]/25 bg-white px-4 py-2.5 text-sm font-semibold text-[#FF5A00] transition hover:bg-[#FFF8F4] sm:mt-0"
+        >
+          Заявки «Куплю»
+        </Link>
       </section>
 
       {/* ── MOBILE: accordion list ─────────────────────────────────────────── */}
@@ -539,41 +562,60 @@ export default function CategoriesPage() {
       <div className="hidden space-y-10 lg:block">
         {ALL_CATEGORIES.map((cat) => (
           <section key={cat.slug} id={cat.slug}>
+            {/* Section header */}
             <div className="mb-5 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-2xl ${cat.color}`}>
+                <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] text-2xl ${cat.color}`}>
                   {cat.emoji}
                 </span>
                 <div>
-                  <Link href={cat.href} className="text-2xl font-semibold text-zinc-950 hover:underline underline-offset-2">
-                    {cat.title} ›
+                  <Link
+                    href={cat.href}
+                    className="inline-flex items-center gap-1.5 text-2xl font-semibold text-zinc-950 transition hover:text-zinc-600"
+                  >
+                    {cat.title}
+                    <ChevronRight className="h-5 w-5 text-zinc-400" />
                   </Link>
-                  <p className="mt-0.5 text-sm text-zinc-500">{cat.description}</p>
                 </div>
               </div>
               <Link
                 href={cat.href}
-                className="shrink-0 rounded-xl bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-950 hover:text-white"
+                className="shrink-0 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-600 transition hover:border-[hsl(var(--nashlo-orange))] hover:text-[hsl(var(--nashlo-orange))]"
               >
                 Все объявления
               </Link>
             </div>
 
-            <div className="grid grid-cols-4 gap-4">
+            {/* Group cards */}
+            <div className="grid grid-cols-4 gap-3">
               {cat.groups.map((group) => (
-                <div key={group.title} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-                  <Link href={group.href} className={`mb-3 block text-sm font-semibold transition hover:underline underline-offset-2 ${cat.textColor}`}>
-                    {group.title} ›
-                  </Link>
-                  <ul className="space-y-2">
-                    {group.items.map((item) => (
-                      <li key={item.label}>
-                        <Link href={item.href} className="text-sm text-zinc-600 transition hover:text-zinc-950">
-                          {item.label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
+                <div
+                  key={group.title}
+                  className="group/card overflow-hidden rounded-2xl border border-white/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition duration-150 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
+                >
+                  {/* Colored top accent strip */}
+                  <div className={`h-1 w-full ${cat.color.replace(/\/[\d.]+\]/, "]").replace("bg-[hsl", "bg-[hsl")}`} />
+                  <div className="p-4 pt-3.5">
+                    <Link
+                      href={group.href}
+                      className={`mb-3 inline-flex items-center gap-1 text-sm font-semibold transition hover:underline underline-offset-2 ${cat.textColor}`}
+                    >
+                      {group.title}
+                      <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+                    </Link>
+                    <ul className="space-y-2">
+                      {group.items.map((item) => (
+                        <li key={item.label}>
+                          <Link
+                            href={item.href}
+                            className="block text-sm text-zinc-500 transition hover:text-zinc-950"
+                          >
+                            {item.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               ))}
             </div>

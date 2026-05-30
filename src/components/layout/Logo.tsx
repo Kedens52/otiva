@@ -1,21 +1,30 @@
-﻿import Image from "next/image"
-import Link from "next/link"
+﻿import Link from "next/link"
+import { NashloLogoMark } from "@/components/layout/NashloLogoMark"
+
+type LogoSize = "compact" | "default" | "header"
 
 type LogoProps = {
+  /** @deprecated используйте size="compact" */
   compact?: boolean
+  size?: LogoSize
 }
 
-export function Logo({ compact = false }: LogoProps) {
+const SIZE_CLASS: Record<LogoSize, string> = {
+  compact: "h-8 w-8 sm:h-9 sm:w-9",
+  default: "h-10 w-10 sm:h-11 sm:w-11",
+  header: "h-10 w-10 lg:h-11 lg:w-11",
+}
+
+export function Logo({ compact = false, size }: LogoProps) {
+  const resolvedSize: LogoSize = size ?? (compact ? "compact" : "default")
+
   return (
-    <Link href="/feed" className="inline-flex items-center" aria-label="Нашло">
-      <Image
-        src="/nashlo-logo.svg"
-        alt="Нашло"
-        width={2096}
-        height={236}
-        priority={!compact}
-        className={compact ? "h-5 w-auto" : "h-8 w-auto sm:h-9"}
-      />
+    <Link
+      href="/"
+      className="inline-flex shrink-0 items-center overflow-visible"
+      aria-label="OTIVA — на главную"
+    >
+      <NashloLogoMark className={SIZE_CLASS[resolvedSize]} />
     </Link>
   )
 }

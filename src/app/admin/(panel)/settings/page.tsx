@@ -1,6 +1,8 @@
 ﻿"use client"
 
 import { useState } from "react"
+import { AdminPageHeader } from "@/components/admin/layout/AdminPageHeader"
+import { AdminPageShell } from "@/components/admin/layout/AdminPageShell"
 
 const DEFAULT_FILTERS = [
   { id: "contacts", title: "Контакты в описании",  desc: "Телефоны, мессенджеры и внешние ссылки в тексте объявления", level: "Высокий", enabled: true  },
@@ -99,16 +101,19 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">Настройки модерации</h1>
-          <p className="mt-1 text-sm text-zinc-500">Автофильтры, плагины, ИИ-модерация и стоп-слова.</p>
-        </div>
-        <button onClick={save} className="rounded-2xl bg-zinc-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800">
-          {saved ? "✓ Сохранено" : "Сохранить настройки"}
-        </button>
-      </div>
+    <AdminPageShell className="max-w-5xl py-8">
+      <AdminPageHeader
+        title="Настройки модерации"
+        description="Автофильтры, плагины, ИИ-модерация и стоп-слова."
+        actions={
+          <button
+            onClick={save}
+            className="rounded-2xl bg-zinc-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
+          >
+            {saved ? "✓ Сохранено" : "Сохранить настройки"}
+          </button>
+        }
+      />
 
       {/* AI Moderation */}
       <section className="mt-8">
@@ -323,6 +328,6 @@ export default function AdminSettingsPage() {
           </button>
         </div>
       </section>
-    </div>
+    </AdminPageShell>
   )
 }

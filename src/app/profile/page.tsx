@@ -2,110 +2,118 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
-import { formatPrice, imageToneForCategory } from "@/lib/listing-types"
+import { useEffect, useState } from "react"
+import {
+  Bell,
+  ChevronRight,
+  ExternalLink,
+  Heart,
+  LayoutList,
+  MessageCircle,
+  Rocket,
+  Search,
+  Settings,
+  ShoppingBag,
+  Star,
+} from "lucide-react"
+import { getWantToBuyCreatePath } from "@/lib/want-to-buy/routes"
+import { ProfileBadgesSection } from "@/components/profile/ProfileBadgesSection"
+import { ProfileBusinessTeaser } from "@/components/business/ProfileBusinessTeaser"
+import { ProfileHubMobileMenu } from "@/components/profile/ProfileHubMobileMenu"
+import type { PublicUserBadge } from "@/lib/badges/badge-map"
+import {
+  resolveProfileLevelDisplay,
+  formatJoinedYear,
+  formatProfileNumber,
+  formatWalletBalance,
+  profileTypeLabel,
+} from "@/lib/profile-hub"
 
-type User = {
+type ProfileStats = {
+  listingsTotal: number
+  listingsActive: number
+  listingsSold: number
+  favorites: number
+  reviews: number
+}
+
+type ProfileUser = {
   id: string
+  name: string | null
   phone: string | null
   email?: string | null
-  name: string | null
   avatar: string | null
-  description: string | null
   city: string | null
   rating: number
   reviewCount: number
+  walletBalance: number
+  bonusBalance?: number
+  createdAt: string
+  profileType?: string | null
+  trustTier?: string | null
   isVerified: boolean
-  createdAt: string
-  authProviders?: { phone: boolean; vk: boolean; yandex: boolean }
+  badges?: PublicUserBadge[]
+  stats?: ProfileStats
 }
 
-type Listing = {
-  id: string
-  title: string
-  price: number
-  city: string | null
-  status: string
-  createdAt: string
-  images: string[]
-  views: number
-  category: { slug: string; nameRu: string }
-  _count?: { favorites: number }
-}
-
-const statusLabel: Record<string, string> = {
-  ACTIVE: "Активно",
-  MODERATION: "На проверке",
-  ARCHIVED: "Архив",
-  SOLD: "Продано",
-  REJECTED: "Отклонено",
-}
-
-const statusColor: Record<string, string> = {
-  ACTIVE: "bg-emerald-50 text-emerald-700",
-  MODERATION: "bg-amber-50 text-amber-700",
-  ARCHIVED: "bg-zinc-100 text-zinc-500",
-  SOLD: "bg-blue-50 text-blue-700",
-  REJECTED: "bg-red-50 text-red-600",
-}
-
-const listingOpenStorageKey = "nashlo-profile-listing-opens"
-
-function statNumber(value: number) {
-  return new Intl.NumberFormat("ru-RU").format(value)
-}
-
-function readListingOpens() {
-  if (typeof window === "undefined") return {}
-  try {
-    const raw = window.localStorage.getItem(listingOpenStorageKey)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw)
-    return typeof parsed === "object" && parsed ? (parsed as Record<string, number>) : {}
-  } catch {
-    return {}
-  }
-}
-
-function providerLabel(key: "phone" | "vk" | "yandex") {
-  if (key === "phone") return "Телефон"
-  if (key === "vk") return "VK"
-  return "Яндекс"
+function RatingStars({ rating }: { rating: number }) {
+  return (
+    <div className="mt-1.5 flex items-center gap-0.5">
+      {Array.from({ length: 5 }).map((_, index) => {
+        const filled = rating >= index + 1
+        const half = !filled && rating >= index + 0.5
+        return (
+          <Star
+            key={index}
+            className={`h-3.5 w-3.5 ${
+              filled || half
+                ? "fill-[hsl(var(--nashlo-orange))] text-[hsl(var(--nashlo-orange))]"
+                : "text-zinc-300"
+            }`}
+            strokeWidth={1.5}
+          />
+        )
+      })}
+    </div>
+  )
 }
 
 export default function ProfilePage() {
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
-  const [listings, setListings] = useState<Listing[]>([])
+  const [user, setUser] = useState<ProfileUser | null>(null)
+  const [unread, setUnread] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [activeTab, setActiveTab] = useState<"active" | "archive">("active")
-  const [listingOpens, setListingOpens] = useState<Record<string, number>>({})
 
   async function load() {
     setError(false)
     setLoading(true)
     try {
-      const me = await fetch("/api/auth/me")
-      if (me.status === 401) {
+      const [profileRes, chatsRes] = await Promise.all([
+        fetch("/api/profile"),
+        fetch("/api/messages/conversations"),
+      ])
+
+      if (profileRes.status === 401) {
         router.push("/login?from=/profile")
         return
       }
-      if (!me.ok) {
+      if (!profileRes.ok) {
         setError(true)
-        setLoading(false)
         return
       }
-      const data = await me.json()
-      setUser(data.user)
 
-      const listingRes = await fetch("/api/my-listings")
-      if (listingRes.ok) {
-        const listingData = await listingRes.json()
-        setListings(listingData.listings ?? [])
+      const profileData = await profileRes.json()
+      setUser(profileData.user)
+
+      if (chatsRes.ok) {
+        const chatsData = await chatsRes.json()
+        const count = (chatsData.conversations ?? []).reduce(
+          (sum: number, c: { unreadCount?: number }) => sum + (c.unreadCount ?? 0),
+          0,
+        )
+        setUnread(count)
       }
-      setListingOpens(readListingOpens())
     } catch {
       setError(true)
     } finally {
@@ -118,389 +126,397 @@ export default function ProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const stats = useMemo(() => {
-    const views = listings.reduce((sum, item) => sum + (item.views || 0), 0)
-    const favorites = listings.reduce((sum, item) => sum + (item._count?.favorites || 0), 0)
-    const active = listings.filter((item) => item.status === "ACTIVE").length
-    const moderation = listings.filter((item) => item.status === "MODERATION").length
-    const archived = listings.filter((item) => ["ARCHIVED", "SOLD", "REJECTED"].includes(item.status)).length
-    return { views, favorites, active, moderation, archived, total: listings.length }
-  }, [listings])
-
-  const totalOpens = useMemo(
-    () => listings.reduce((sum, item) => sum + (listingOpens[item.id] || 0), 0),
-    [listingOpens, listings],
-  )
-
-  const visibleListings = useMemo(() => {
-    const filtered = activeTab === "active"
-      ? listings.filter((item) => item.status === "ACTIVE" || item.status === "MODERATION")
-      : listings.filter((item) => item.status === "ARCHIVED" || item.status === "SOLD" || item.status === "REJECTED")
-    return filtered.slice(0, 6)
-  }, [activeTab, listings])
-
   if (loading) {
     return (
-      <main className="mx-auto flex min-h-[60vh] max-w-5xl items-center px-4">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-950" />
-      </main>
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-[hsl(var(--nashlo-orange))]" />
+      </div>
     )
   }
 
   if (error) {
     return (
-      <main className="mx-auto flex min-h-[60vh] max-w-5xl flex-col items-center justify-center gap-4 px-4 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100 text-3xl">!</div>
-        <div>
-          <p className="text-lg font-bold text-zinc-950">Не удалось загрузить данные</p>
-          <p className="mt-1 text-sm text-zinc-500">Проверьте соединение и попробуйте снова</p>
-        </div>
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-base font-semibold text-zinc-950">Не удалось загрузить профиль</p>
         <button
+          type="button"
           onClick={() => load()}
-          className="rounded-2xl bg-[hsl(var(--nashlo-orange))] px-6 py-3 text-sm font-semibold text-white"
+          className="rounded-xl bg-[hsl(var(--nashlo-orange))] px-5 py-2.5 text-sm font-semibold text-white"
         >
           Повторить
         </button>
-      </main>
+      </div>
     )
   }
 
   if (!user) return null
 
-  const initials = (user.name || "П")[0].toUpperCase()
-  const joined = new Date(user.createdAt).toLocaleDateString("ru-RU", { month: "long", year: "numeric" })
-  const publicPath = `/profile/${user.id}`
-  const profileFilled = [user.name, user.city, user.description, user.avatar].filter(Boolean).length
-  const profileProgress = Math.round((profileFilled / 4) * 100)
-  const authProviders = user.authProviders ?? {
-    phone: Boolean(user.phone),
-    vk: false,
-    yandex: false,
+  const stats = user.stats ?? {
+    listingsTotal: 0,
+    listingsActive: 0,
+    listingsSold: 0,
+    favorites: 0,
+    reviews: 0,
   }
+  const level = resolveProfileLevelDisplay(user.trustTier, user.badges)
+  const joinedYear = formatJoinedYear(user.createdAt)
+  const displayName = user.name || "Пользователь"
+  const initials = displayName.trim().slice(0, 1).toUpperCase()
 
-  async function copyPublicLink() {
-    const link = `${window.location.origin}${publicPath}`
-    try {
-      await navigator.clipboard.writeText(link)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1800)
-    } catch {
-      window.prompt("Ссылка на профиль", link)
-    }
-  }
+  const quickLinks = [
+    {
+      href: "/my-listings",
+      icon: LayoutList,
+      title: "Мои объявления",
+      value: stats.listingsActive > 0 ? `${stats.listingsActive} активных` : "Разместить",
+      accent: false,
+    },
+    {
+      href: "/chat",
+      icon: MessageCircle,
+      title: "Сообщения",
+      value: unread > 0 ? `${unread} новых` : "Открыть чаты",
+      accent: unread > 0,
+      badge: unread,
+    },
+    {
+      href: "/profile/favorites",
+      icon: Heart,
+      title: "Избранное",
+      value: stats.favorites > 0 ? `${stats.favorites} объявлений` : "Пусто",
+      accent: false,
+    },
+    {
+      href: "/profile/promotion",
+      icon: Rocket,
+      title: "Продвижение",
+      value: "Поднять в поиске",
+      accent: true,
+    },
+  ]
 
-  function trackListingOpen(id: string) {
-    setListingOpens((current) => {
-      const next = { ...current, [id]: (current[id] || 0) + 1 }
-      window.localStorage.setItem(listingOpenStorageKey, JSON.stringify(next))
-      return next
-    })
-  }
+  const wantToBuyQuickLinks = [
+    {
+      href: "/profile/want-to-buy",
+      icon: ShoppingBag,
+      title: "Мои заявки",
+      value: "Что вы хотите купить",
+    },
+    {
+      href: "/profile/want-to-buy/offers",
+      icon: MessageCircle,
+      title: "Отклики продавцов",
+      value: "Предложения по вашим заявкам",
+    },
+    {
+      href: "/profile/my-offers",
+      icon: Search,
+      title: "Мои предложения",
+      value: "Отклики на заявки других",
+    },
+  ]
 
-  function Avatar({ size = "h-20 w-20" }: { size?: string }) {
-    if (user?.avatar) {
-      return <img src={user.avatar} alt="" className={`${size} rounded-full object-cover`} />
-    }
-    return (
-      <div className={`${size} flex items-center justify-center rounded-full bg-zinc-950 text-2xl font-semibold text-white`}>
-        {initials}
-      </div>
-    )
-  }
+  const mobileExtras = [
+    {
+      href: "/profile/finance",
+      label: "Финансы и кошелёк",
+      subtitle: formatWalletBalance(user.walletBalance),
+    },
+    {
+      href: "/support",
+      label: "Поддержка",
+      subtitle: "Помощь по сервису",
+    },
+  ]
 
-  function ListingRow({ listing }: { listing: Listing }) {
-    const tone = imageToneForCategory(listing.category.slug)
-    const thumb = listing.images?.[0]
-    const views = listing.views || 0
-    const favorites = listing._count?.favorites || 0
-    const opens = listingOpens[listing.id] || 0
-
-    return (
-      <article className="flex min-w-0 gap-3 rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
-        <Link
-          href={`/listings/${listing.id}`}
-          onClick={() => trackListingOpen(listing.id)}
-          className={`h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br ${tone} sm:h-24 sm:w-24`}
-        >
-          {thumb ? (
-            <img src={thumb} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-zinc-400">Фото</div>
-          )}
-        </Link>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${statusColor[listing.status] ?? "bg-zinc-100 text-zinc-500"}`}>
-              {statusLabel[listing.status] || listing.status}
-            </span>
-            <span className="text-xs text-zinc-400">{new Date(listing.createdAt).toLocaleDateString("ru-RU")}</span>
-          </div>
-          <Link
-            href={`/listings/${listing.id}`}
-            onClick={() => trackListingOpen(listing.id)}
-            className="mt-1.5 block truncate text-sm font-bold text-zinc-950 hover:underline"
-          >
-            {listing.title}
-          </Link>
-          <p className="text-base font-bold text-zinc-950">{formatPrice(listing.price)}</p>
-          <div className="mt-2 flex items-center gap-3 text-xs text-zinc-400">
-            <span>👁 {statNumber(views)}</span>
-            <span>♡ {statNumber(favorites)}</span>
-            <span>↗ {statNumber(opens)}</span>
-          </div>
-        </div>
-
-        <div className="flex shrink-0 flex-col gap-1.5">
-          <Link
-            href={`/my-listings/${listing.id}/edit`}
-            className="rounded-xl bg-zinc-100 px-3 py-2 text-center text-xs font-semibold text-zinc-950 hover:bg-zinc-200"
-          >
-            Управлять
-          </Link>
-          <Link
-            href={`/listings/${listing.id}`}
-            className="flex items-center justify-center rounded-xl bg-zinc-50 px-3 py-2 text-sm font-bold text-zinc-500 hover:bg-zinc-100"
-          >
-            ›
-          </Link>
-        </div>
-      </article>
-    )
-  }
+  const statCard =
+    "flex min-h-[108px] flex-col rounded-[18px] bg-white p-3.5 shadow-[0_2px_12px_rgba(15,23,42,0.05)] max-lg:border-0 lg:min-h-0 lg:rounded-2xl lg:border lg:border-zinc-200 lg:p-4 lg:shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
+  const statLabel = "text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-400"
+  const metaLine = `На Нашло с ${joinedYear} · ${profileTypeLabel(user.profileType)}${user.city ? ` · ${user.city}` : ""}`
 
   return (
-    <main className="pb-28 lg:pb-10">
-      <div className="mx-auto min-w-0 max-w-5xl px-4 py-4 lg:py-8">
-
-        {/* ── MOBILE profile card (compact, horizontal) ── */}
-        <div className="mb-4 flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm lg:hidden">
-          <div className="relative shrink-0">
-            <Avatar size="h-14 w-14" />
-            <Link
-              href="/profile/settings"
-              className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[hsl(var(--nashlo-orange))] text-xs font-bold text-white"
-            >
-              +
-            </Link>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-bold text-zinc-950">{user.name || "Заполните профиль"}</p>
-            <p className="text-xs text-zinc-500">{user.city || user.description || "Частное лицо"}</p>
-            <p className="mt-0.5 text-[11px] text-zinc-400">На Нашло с {joined}</p>
-          </div>
-          <div className="flex shrink-0 flex-col items-end gap-1 text-right">
-            <p className="text-lg font-bold text-zinc-950">{(user.rating || 0).toFixed(1)}</p>
-            <p className="text-[11px] text-zinc-400">{user.reviewCount || 0} отзывов</p>
-          </div>
-        </div>
-
-        {/* ── MOBILE quick actions ── */}
-        <div className="mb-4 grid grid-cols-2 gap-2 lg:hidden">
-          <Link href="/create" className="flex items-center justify-center gap-2 rounded-xl bg-[hsl(var(--nashlo-orange))] py-3 text-sm font-semibold text-white shadow-sm">
-            <span>+</span> Разместить
+    <div className="w-full min-w-0 lg:pb-0">
+      {/* Mobile header */}
+      <div className="sticky top-0 z-20 flex items-center justify-between bg-[#F5F6F8]/90 px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] backdrop-blur-md lg:hidden">
+        <Link
+          href={`/profile/${user.id}`}
+          className="flex h-10 w-10 items-center justify-center rounded-full text-zinc-500 transition active:bg-white/80"
+          aria-label="Публичный профиль"
+        >
+          <ExternalLink className="h-[18px] w-[18px]" strokeWidth={1.75} />
+        </Link>
+        <h1 className="text-[17px] font-semibold tracking-tight text-zinc-950">Профиль</h1>
+        <div className="flex items-center gap-0.5">
+          <Link
+            href="/profile/notifications"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-zinc-600 transition active:bg-white/80"
+            aria-label="Уведомления"
+          >
+            <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} />
           </Link>
-          <Link href="/my-listings" className="flex items-center justify-center rounded-xl border border-zinc-200 bg-white py-3 text-sm font-semibold text-zinc-700">
-            Мои объявления
+          <Link
+            href="/profile/settings"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-zinc-600 transition active:bg-white/80"
+            aria-label="Настройки"
+          >
+            <Settings className="h-[18px] w-[18px]" strokeWidth={1.75} />
           </Link>
         </div>
+      </div>
 
-        {/* ── DESKTOP grid ── */}
-        <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="flex w-full flex-col gap-3 px-4 pt-2 max-lg:pb-1 lg:gap-5 lg:px-0 lg:pt-0">
+        {/* Identity */}
+        <section className="overflow-hidden rounded-[20px] bg-white shadow-[0_2px_12px_rgba(15,23,42,0.05)] lg:rounded-2xl lg:border lg:border-zinc-200 lg:p-6 lg:shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+          <div className="hidden lg:block">
+            <h1 className="text-[22px] font-semibold text-zinc-950">Обзор кабинета</h1>
+          </div>
 
-          {/* ── Sidebar (desktop only) ── */}
-          <aside className="hidden lg:block lg:sticky lg:top-24 lg:h-fit lg:space-y-4">
-            <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-col items-center text-center">
-                <div className="relative">
-                  <Avatar size="h-20 w-20" />
-                  <Link
-                    href="/profile/settings"
-                    className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[hsl(var(--nashlo-orange))] text-sm font-bold text-white"
-                    aria-label="Редактировать профиль"
-                  >
-                    +
-                  </Link>
-                </div>
-                <h1 className="mt-3 truncate text-lg font-bold text-zinc-950">
-                  {user.name || "Заполните профиль"}
-                </h1>
-                <p className="text-sm text-zinc-500">{user.description || "Частное лицо"}</p>
-                <p className="mt-1 text-xs text-zinc-400">На Нашло с {joined}</p>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <div className="rounded-xl bg-zinc-50 p-3 text-center">
-                  <p className="text-xl font-bold text-zinc-950">{(user.rating || 0).toFixed(1)}</p>
-                  <p className="text-xs text-zinc-500">рейтинг</p>
-                </div>
-                <div className="rounded-xl bg-zinc-50 p-3 text-center">
-                  <p className="text-xl font-bold text-zinc-950">{user.reviewCount || 0}</p>
-                  <p className="text-xs text-zinc-500">отзывов</p>
-                </div>
-              </div>
-
-              {profileProgress < 100 && (
-                <div className="mt-3 rounded-xl bg-zinc-50 p-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-zinc-700">Профиль заполнен</p>
-                    <p className="text-xs font-bold text-[hsl(var(--nashlo-orange))]">{profileProgress}%</p>
-                  </div>
-                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white">
-                    <div className="h-full rounded-full bg-[hsl(var(--nashlo-orange))]" style={{ width: `${profileProgress}%` }} />
-                  </div>
-                  <Link href="/profile/settings" className="mt-2 inline-flex text-xs font-semibold text-[hsl(var(--nashlo-orange))]">
-                    Дополнить данные →
-                  </Link>
+          {/* Mobile hero */}
+          <div className="p-4 lg:hidden">
+            <div className="flex items-start gap-3.5">
+              {user.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt=""
+                  className="h-[72px] w-[72px] shrink-0 rounded-full object-cover ring-2 ring-[hsl(var(--nashlo-orange)/0.12)]"
+                />
+              ) : (
+                <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full bg-[hsl(var(--nashlo-orange))] text-[28px] font-bold text-white ring-2 ring-[hsl(var(--nashlo-orange)/0.2)]">
+                  {initials}
                 </div>
               )}
-
-              <div className="mt-3 space-y-2">
-                <Link href={publicPath} className="flex items-center justify-center rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white">
-                  Открыть публичный профиль
-                </Link>
-                <button onClick={copyPublicLink} className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50">
-                  {copied ? "✓ Скопировано" : "Скопировать ссылку"}
-                </button>
+              <div className="min-w-0 flex-1 pt-0.5">
+                <h2 className="truncate text-[22px] font-bold leading-tight tracking-tight text-zinc-950">
+                  {displayName}
+                </h2>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  {user.isVerified ? (
+                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                      Проверен
+                    </span>
+                  ) : null}
+                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600">
+                    {level.title}
+                  </span>
+                </div>
+                <p className="mt-1.5 text-[13px] leading-snug text-zinc-500">{metaLine}</p>
+                <p className="mt-0.5 text-[11px] text-zinc-400">№ {formatProfileNumber(user.id)}</p>
               </div>
-            </section>
+            </div>
+            <ProfileBadgesSection badges={user.badges} scrollRow className="mt-3" />
+            <div className="mt-3.5 flex flex-col gap-2">
+              <Link
+                href="/create"
+                className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[hsl(var(--nashlo-orange))] text-[15px] font-semibold text-white shadow-[0_4px_14px_hsl(var(--nashlo-orange)/0.35)] transition active:scale-[0.98] active:opacity-95"
+              >
+                + Объявление
+              </Link>
+              <Link
+                href={getWantToBuyCreatePath()}
+                className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-[#FF5A00]/25 bg-white text-[15px] font-semibold text-[#FF5A00] transition active:bg-[#FFF8F4]"
+              >
+                Создать заявку «Куплю»
+              </Link>
+              <Link
+                href={`/profile/${user.id}`}
+                className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl text-[15px] font-semibold text-zinc-600 transition active:bg-zinc-100"
+              >
+                Публичный профиль
+                <ExternalLink className="h-4 w-4 opacity-60" strokeWidth={1.75} />
+              </Link>
+            </div>
+          </div>
 
-            <nav className="rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm">
-              {[
-                { label: "Мои объявления", href: "/my-listings", icon: "☰" },
-                { label: "Сообщения", href: "/chat", icon: "◌" },
-                { label: "Избранное", href: "/favorites", icon: "♡" },
-                { label: "Настройки", href: "/profile/settings", icon: "⚙" },
-              ].map((item) => (
+          {/* Desktop hero */}
+          <div className="mt-0 hidden flex-col gap-5 lg:mt-5 lg:flex lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4">
+              {user.avatar ? (
+                <img src={user.avatar} alt="" className="h-[72px] w-[72px] rounded-2xl object-cover" />
+              ) : (
+                <div className="flex h-[72px] w-[72px] items-center justify-center rounded-2xl bg-[hsl(var(--nashlo-orange))] text-2xl font-bold text-white">
+                  {initials}
+                </div>
+              )}
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="truncate text-2xl font-bold text-zinc-950">{displayName}</h2>
+                  {user.isVerified ? (
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                      ✓ Проверен
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-1 text-sm text-zinc-500">{metaLine}</p>
+                <p className="text-xs text-zinc-400">Профиль № {formatProfileNumber(user.id)}</p>
+                {user.isVerified ? (
+                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    ✓ Проверенный продавец
+                  </div>
+                ) : null}
+                <ProfileBadgesSection badges={user.badges} className="mt-2" />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 lg:shrink-0">
+              <Link
+                href={`/profile/${user.id}`}
+                className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-zinc-200 px-4 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
+              >
+                Публичный профиль
+                <ExternalLink className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/create"
+                className="inline-flex h-11 items-center rounded-xl bg-[hsl(var(--nashlo-orange))] px-4 text-sm font-semibold text-white transition hover:opacity-95"
+              >
+                + Объявление
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Stats */}
+        <section className="grid grid-cols-2 auto-rows-fr gap-2.5 lg:grid-cols-3 lg:gap-3 xl:grid-cols-5">
+          <div className={statCard}>
+            <p className={statLabel}>Рейтинг</p>
+            <p className="mt-auto pt-1 text-2xl font-bold tabular-nums text-zinc-950">
+              {user.rating.toFixed(1).replace(".", ",")}
+            </p>
+            <RatingStars rating={user.rating} />
+            <Link
+              href="/profile/reviews"
+              className="mt-1 block text-[11px] text-zinc-500 transition hover:text-[hsl(var(--nashlo-orange))]"
+            >
+              {user.reviewCount > 0 ? `${user.reviewCount} отзывов` : "Нет отзывов"}
+            </Link>
+          </div>
+          <div className={statCard}>
+            <p className={statLabel}>{level.source === "badge" ? "Уровень" : "Уровень"}</p>
+            <div className="mt-auto flex items-center gap-2 pt-1">
+              {level.icon ? (
+                <img src={level.icon} alt="" width={24} height={24} className="shrink-0 object-contain" />
+              ) : null}
+              <p className="text-sm font-semibold leading-snug text-zinc-950">{level.title}</p>
+            </div>
+            <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-zinc-500">{level.desc}</p>
+          </div>
+          <div className={statCard}>
+            <p className={statLabel}>Объявления</p>
+            <p className="mt-auto pt-1 text-2xl font-bold tabular-nums text-zinc-950">{stats.listingsActive}</p>
+            <p className="mt-1 text-[11px] text-zinc-500">
+              {stats.listingsTotal} всего · {stats.listingsSold} продано
+            </p>
+          </div>
+          <div className={statCard}>
+            <p className={statLabel}>Баллы</p>
+            <p className="mt-auto pt-1 text-2xl font-bold tabular-nums text-zinc-950">{user.bonusBalance ?? 0}</p>
+            <Link
+              href="/profile/bonuses"
+              className="mt-1 inline-flex text-[11px] font-semibold text-[hsl(var(--nashlo-orange))]"
+            >
+              Как получить →
+            </Link>
+          </div>
+          <div className={`${statCard} col-span-2 max-lg:col-span-2 lg:col-span-1`}>
+            <p className={statLabel}>Кошелёк</p>
+            <p className="mt-auto pt-1 text-xl font-bold text-zinc-950">{formatWalletBalance(user.walletBalance)}</p>
+            <Link
+              href="/profile/finance"
+              className="mt-1 inline-flex text-[11px] font-semibold text-[hsl(var(--nashlo-orange))]"
+            >
+              Пополнить →
+            </Link>
+          </div>
+        </section>
+
+        {/* Меню кабинета — полный список как в сайдбаре на десктопе */}
+        <ProfileHubMobileMenu unreadChats={unread} extras={mobileExtras} />
+
+        <section className="hidden overflow-hidden rounded-2xl border border-orange-100 bg-gradient-to-br from-[#FFF8F4] to-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)] lg:block">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-zinc-950">Куплю</h2>
+              <p className="mt-0.5 text-sm text-zinc-500">Заявки и отклики продавцов</p>
+            </div>
+            <Link
+              href={getWantToBuyCreatePath()}
+              className="inline-flex h-10 items-center rounded-xl bg-[#FF5A00] px-4 text-sm font-semibold text-white transition hover:bg-[#E8470F]"
+            >
+              Создать заявку
+            </Link>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {wantToBuyQuickLinks.map((item) => {
+              const Icon = item.icon
+              return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950"
+                  className="group flex flex-col rounded-xl border border-zinc-200/80 bg-white p-4 transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md"
                 >
-                  <span className="w-5 text-center text-base text-zinc-400">{item.icon}</span>
-                  {item.label}
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF3EC] text-[#FF5A00]">
+                    <Icon className="h-5 w-5" strokeWidth={1.75} />
+                  </span>
+                  <p className="mt-3 text-sm font-semibold text-zinc-950">{item.title}</p>
+                  <p className="mt-0.5 text-xs leading-snug text-zinc-500">{item.value}</p>
                 </Link>
-              ))}
-            </nav>
+              )
+            })}
+          </div>
+        </section>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Способы входа</p>
-              <div className="mt-3 space-y-1.5">
-                {(["phone", "vk", "yandex"] as const).map((key) => {
-                  const active = authProviders[key]
-                  return (
-                    <div key={key} className="flex items-center justify-between rounded-xl bg-zinc-50 px-3 py-2">
-                      <span className="text-sm font-medium text-zinc-800">{providerLabel(key)}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${active ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-400"}`}>
-                        {active ? "Подключен" : "Нет"}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </aside>
+        <ProfileBusinessTeaser />
 
-          {/* ── Main content ── */}
-          <section className="min-w-0">
-            {/* Header */}
-            <div className="hidden items-center justify-between gap-4 lg:flex">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight text-zinc-950">Личный кабинет</h2>
-                <p className="mt-1 text-sm text-zinc-500">Здравствуйте, {user.name || "Пользователь"}!</p>
-              </div>
-              <Link href="/create" className="rounded-xl bg-[hsl(var(--nashlo-orange))] px-4 py-2.5 text-sm font-semibold text-white shadow-sm">
-                + Разместить объявление
-              </Link>
-            </div>
-
-            {/* Stats */}
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {[
-                { label: "Объявлений", value: stats.total },
-                { label: "Активных", value: stats.active },
-                { label: "Просмотры", value: statNumber(stats.views) },
-                { label: "В избранном", value: statNumber(stats.favorites) },
-              ].map((item) => (
-                <div key={item.label} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-                  <p className="text-xs text-zinc-500">{item.label}</p>
-                  <p className="mt-1 text-2xl font-bold text-zinc-950">{item.value}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Quick links */}
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <Link href="/my-listings" className="rounded-2xl bg-zinc-950 p-4 text-white">
-                <p className="text-sm font-bold">Все объявления</p>
-                <p className="mt-1 text-xs text-white/60">Управление, архив</p>
-              </Link>
-              <Link href="/chat" className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-                <p className="text-sm font-bold text-zinc-950">Сообщения</p>
-                <p className="mt-1 text-xs text-zinc-500">Чаты с покупателями</p>
-              </Link>
-              <Link href="/favorites" className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:block hidden">
-                <p className="text-sm font-bold text-zinc-950">Избранное</p>
-                <p className="mt-1 text-xs text-zinc-500">Сохранённые товары</p>
-              </Link>
-            </div>
-
-            {/* Listings tabs */}
-            <div className="mt-6 flex items-center gap-4 border-b border-zinc-200 pb-0">
-              <button
-                onClick={() => setActiveTab("active")}
-                className={`border-b-2 pb-3 text-sm font-semibold transition ${activeTab === "active" ? "border-zinc-950 text-zinc-950" : "border-transparent text-zinc-400"}`}
+        {/* Десктоп: быстрые карточки */}
+        <section className="hidden overflow-hidden rounded-[20px] bg-white shadow-[0_2px_12px_rgba(15,23,42,0.05)] lg:grid lg:grid-cols-4 lg:gap-3 lg:overflow-visible lg:rounded-none lg:bg-transparent lg:shadow-none">
+          {quickLinks.map((item) => {
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`group relative flex items-center gap-3 transition active:bg-zinc-50 lg:flex-col lg:rounded-2xl lg:border lg:p-4 lg:hover:-translate-y-0.5 lg:hover:shadow-md lg:active:bg-transparent ${
+                  item.accent
+                    ? "lg:border-orange-100 lg:bg-gradient-to-br lg:from-[#FFF6F0] lg:to-white"
+                    : "lg:border-zinc-200 lg:bg-white"
+                }`}
               >
-                Активные{stats.active + stats.moderation > 0 && (
-                  <span className="ml-1.5 rounded-full bg-zinc-100 px-2 py-0.5 text-xs">{stats.active + stats.moderation}</span>
-                )}
-              </button>
-              <button
-                onClick={() => setActiveTab("archive")}
-                className={`border-b-2 pb-3 text-sm font-semibold transition ${activeTab === "archive" ? "border-zinc-950 text-zinc-950" : "border-transparent text-zinc-400"}`}
-              >
-                Архив{stats.archived > 0 && (
-                  <span className="ml-1.5 rounded-full bg-zinc-100 px-2 py-0.5 text-xs">{stats.archived}</span>
-                )}
-              </button>
-              <div className="ml-auto text-xs text-zinc-400">
-                {totalOpens > 0 && `${statNumber(totalOpens)} переходов`}
-              </div>
-            </div>
-
-
-            <div className="mt-3 space-y-2">
-              {visibleListings.length ? (
-                visibleListings.map((listing) => <ListingRow key={listing.id} listing={listing} />)
-              ) : (
-                <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center shadow-sm">
-                  <p className="text-base font-bold text-zinc-950">
-                    {activeTab === "active" ? "Активных объявлений пока нет" : "Архив пуст"}
-                  </p>
-                  <p className="mt-1 text-sm text-zinc-500">
-                    {activeTab === "active"
-                      ? "Создайте объявление, и оно появится здесь после проверки."
-                      : "Снятые и проданные объявления будут здесь."}
-                  </p>
-                  {activeTab === "active" && (
-                    <Link href="/create" className="mt-4 inline-flex rounded-xl bg-zinc-950 px-5 py-2.5 text-sm font-semibold text-white">
-                      Создать объявление
-                    </Link>
-                  )}
+                <span
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                    item.accent
+                      ? "bg-[hsl(var(--nashlo-orange))] text-white"
+                      : "bg-zinc-100 text-zinc-700"
+                  }`}
+                >
+                  <Icon className="h-5 w-5" strokeWidth={1.75} />
+                </span>
+                <div className="min-w-0 flex-1 lg:mt-3 lg:flex-none">
+                  <p className="text-[15px] font-semibold text-zinc-950">{item.title}</p>
+                  <p className="text-sm text-zinc-500">{item.value}</p>
                 </div>
-              )}
-            </div>
+                {item.badge && item.badge > 0 ? (
+                  <span className="shrink-0 rounded-full bg-[hsl(var(--nashlo-orange))] px-2 py-0.5 text-[11px] font-bold text-white lg:absolute lg:right-4 lg:top-4">
+                    {item.badge}
+                  </span>
+                ) : (
+                  <ChevronRight className="hidden h-5 w-5 shrink-0 text-zinc-300 lg:block" strokeWidth={1.75} />
+                )}
+              </Link>
+            )
+          })}
+        </section>
 
-            {visibleListings.length > 0 && (
-              <div className="mt-4">
-                <Link href="/my-listings" className="inline-flex rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50">
-                  Все объявления
-                </Link>
-              </div>
-            )}
-          </section>
-        </div>
+        <button
+          type="button"
+          onClick={async () => {
+            await fetch("/api/auth/logout", { method: "POST" })
+            window.dispatchEvent(new Event("nashlo-auth-change"))
+            router.push("/")
+          }}
+          className="flex h-11 w-full items-center justify-center rounded-2xl bg-white text-sm font-semibold text-zinc-500 shadow-[0_2px_12px_rgba(15,23,42,0.05)] transition active:bg-red-50 active:text-red-600 lg:hidden"
+        >
+          Выйти из аккаунта
+        </button>
       </div>
-    </main>
+    </div>
   )
 }

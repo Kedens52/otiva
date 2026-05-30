@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { MarketPricePanel } from "@/components/marketplace/MarketPricePanel"
 
 const CITIES = [
   "Москва","Санкт-Петербург","Казань","Екатеринбург","Новосибирск",
@@ -20,6 +21,8 @@ type Listing = {
   images: string[]
   video?: string | null
   status: string
+  category?: { slug: string }
+  attributes?: Record<string, unknown>
 }
 
 export default function EditListingPage({ params }: { params: { id: string } }) {
@@ -42,6 +45,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
     city: "",
     free: false,
   })
+  const [priceAnomalyReason, setPriceAnomalyReason] = useState("")
 
   useEffect(() => {
     async function load() {
@@ -102,6 +106,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
           city: form.city || undefined,
           images: images.length ? images : undefined,
           video: video || undefined,
+          ...(priceAnomalyReason.trim() ? { priceAnomalyReason: priceAnomalyReason.trim() } : {}),
         }),
       })
       const data = await res.json()
@@ -166,6 +171,18 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
               <input type="checkbox" checked={form.free} onChange={(e) => setForm((f) => ({ ...f, free: e.target.checked }))} />
               Бесплатно
             </label>
+            {listing?.category?.slug ? (
+              <MarketPricePanel
+                categorySlug={listing.category.slug}
+                price={form.free ? 0 : Number(form.price) || 0}
+                city={form.city}
+                attributes={(listing.attributes as Record<string, unknown>) ?? {}}
+                excludeListingId={listing.id}
+                disabled={form.free}
+                reason={priceAnomalyReason}
+                onReasonChange={setPriceAnomalyReason}
+              />
+            ) : null}
           </div>
 
           <div>

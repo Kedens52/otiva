@@ -47,7 +47,7 @@ export function AutoResponderSettings() {
           <h2 className="text-xl font-semibold text-zinc-950 sm:text-2xl">Сообщения и автоответчик</h2>
           <p className="mt-1 text-sm text-zinc-500">Шаблон первого сообщения и автоматический ответ на входящие.</p>
         </div>
-        <button onClick={save} className="w-full rounded-2xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 sm:w-auto">
+        <button onClick={save} className="w-full rounded-xl bg-[hsl(var(--nashlo-orange))] px-5 py-3 text-sm font-semibold text-white hover:bg-[hsl(var(--nashlo-orange)/0.92)] sm:w-auto">
           {saved ? "✓ Сохранено" : "Сохранить"}
         </button>
       </div>

@@ -112,7 +112,7 @@ export default function ChatDetailPage({ params }: { params: { chatId: string } 
 
   if (loading) {
     return (
-      <main className="flex min-h-[100dvh] items-center justify-center bg-white">
+      <main className="flex min-h-[50vh] items-center justify-center bg-white lg:min-h-[680px] lg:rounded-2xl lg:border lg:border-zinc-200">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-950" />
       </main>
     )
@@ -120,9 +120,9 @@ export default function ChatDetailPage({ params }: { params: { chatId: string } 
 
   if (!conv) {
     return (
-      <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-white px-4 text-center">
+      <main className="flex min-h-[50vh] flex-col items-center justify-center bg-white px-4 text-center lg:min-h-[680px] lg:rounded-2xl lg:border lg:border-zinc-200">
         <p className="text-zinc-400">Чат не найден.</p>
-        <Link href="/chat" className="mt-4 rounded-2xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white">К сообщениям</Link>
+        <Link href="/chat" className="mt-4 rounded-xl bg-[hsl(var(--nashlo-orange))] px-5 py-3 text-sm font-semibold text-white">К сообщениям</Link>
       </main>
     )
   }
@@ -142,8 +142,8 @@ export default function ChatDetailPage({ params }: { params: { chatId: string } 
   }
 
   return (
-    <main className="h-[100dvh] overflow-hidden bg-white text-zinc-950">
-      <div className="mx-auto flex h-full max-w-2xl flex-col">
+    <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white text-zinc-950 lg:min-h-[680px] lg:rounded-2xl lg:border lg:border-zinc-200 lg:shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-none flex-col lg:max-w-none">
         <header className="shrink-0 border-b border-zinc-100 bg-white/95 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+0.85rem)] backdrop-blur lg:pt-4">
           <div className="flex items-center gap-3">
             <Link href="/chat" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-3xl text-[hsl(var(--nashlo-orange))]">‹</Link>

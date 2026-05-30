@@ -4,9 +4,18 @@ import { getCurrentUser } from '@/lib/auth'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { validateCategoryAttributes } from '@/lib/validators/categoryAttributes'
-import { moderateListing } from '@/lib/listing-moderation'
+import {
+  evaluateListingContent,
+  notifyListingContentIncident,
+} from '@/lib/content-policy/listing-flow'
 import { syncUserTrustSnapshot, maxFreeListingsForTier, needsModerationForHighRisk } from '@/lib/trust-tier'
 import { getListings } from '@/lib/listings/get-listings'
+import { getAdminSession } from '@/lib/admin/adminSession'
+import { toPublicSellerContact } from '@/lib/phone-privacy'
+import { syncListingSlug } from '@/lib/seo/sync-listing-slug'
+import { notifyListingSearchIndex } from '@/lib/seo/notify-search-index'
+import { getMarketPriceEstimate } from '@/lib/market-price/service'
+import { persistListingPriceInsight, shouldFlagLowPriceForModeration } from '@/lib/market-price/persist'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,16 +28,22 @@ const createSchema = z.object({
   video: z.string().max(500).optional(),
   location: z.string().max(300).optional(),
   city: z.string().max(100).optional(),
+  district: z.string().max(120).optional(),
   lat: z.number().optional(),
   lng: z.number().optional(),
+  showExactAddress: z.boolean().optional(),
   attributes: z.record(z.unknown()).optional(),
+  priceAnomalyReason: z.string().max(120).optional(),
 })
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser()
+    const explainParam = request.nextUrl.searchParams.get('explainRanking') === '1'
+    const adminSession = explainParam ? await getAdminSession() : null
     const data = await getListings(prisma, request.nextUrl.searchParams, {
       currentUserId: user?.id ?? null,
+      explainRanking: explainParam && Boolean(adminSession?.staff),
     })
     return NextResponse.json(data)
   } catch (error) {
@@ -46,6 +61,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const data = createSchema.parse(body)
+    if (!data.city?.trim()) {
+      return NextResponse.json({ error: 'Укажите город' }, { status: 400 })
+    }
 
     const attributesValidation = validateCategoryAttributes(
       data.categorySlug,
@@ -72,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
     if (trustState.accountRestricted) {
       return NextResponse.json(
-        { error: 'Для безопасности это действие требует дополнительной проверки.' },
+        { error: 'По правилам сервиса это действие требует дополнительной проверки.' },
         { status: 403 },
       )
     }
@@ -87,50 +105,45 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const verdict = moderateListing({
+    const contentEval = await evaluateListingContent(prisma, {
       title: data.title,
       description: data.description,
       price: data.price,
       images: data.images,
       categorySlug: data.categorySlug,
-      user,
+      user: { id: user.id, isBanned: user.isBanned, isVerified: user.isVerified },
+      request,
     })
 
-    const dupCount = await prisma.listing.count({
-      where: {
-        sellerId: user.id,
-        title: { equals: data.title.trim(), mode: 'insensitive' },
-        status: { notIn: ['ARCHIVED', 'SOLD'] },
-      },
-    })
-    let finalStatus = verdict.status
-    let finalReason = verdict.status === 'REJECTED' ? verdict.reason : verdict.status === 'MODERATION' ? verdict.reason : null
-    let moderationCode: string | null = null
-    if (dupCount > 0 && finalStatus === 'ACTIVE') {
-      finalStatus = 'MODERATION'
-      finalReason = 'Дублирующее объявление'
-      moderationCode = 'DUPLICATE_LISTING'
-    }
+    let finalStatus = contentEval.finalStatus
+    let finalReason = contentEval.finalReason
+    let moderationCode = contentEval.moderationCode
+    const verdict = contentEval.verdict
 
-    if (
-      data.categorySlug === 'cars' &&
-      data.price > 0 &&
-      data.price < 25_000 &&
-      finalStatus === 'ACTIVE'
-    ) {
+    const marketEstimate =
+      data.price > 0
+        ? await getMarketPriceEstimate({
+            categorySlug: data.categorySlug,
+            price: data.price,
+            city: data.city,
+            attributes: data.attributes as Record<string, unknown> | undefined,
+          }).catch(() => null)
+        : null
+
+    if (marketEstimate && shouldFlagLowPriceForModeration(marketEstimate) && finalStatus === 'ACTIVE') {
       finalStatus = 'MODERATION'
       finalReason = finalReason
-        ? `${finalReason} Цена заметно ниже типичного диапазона для категории — проверьте корректность.`
-        : 'Цена заметно ниже типичного диапазона для категории; объявление отправлено на проверку.'
-      moderationCode = moderationCode ?? 'INCORRECT_PRICE'
+        ? `${finalReason} Цена заметно ниже рынка по похожим объявлениям — проверьте корректность.`
+        : 'Цена заметно ниже рынка по похожим объявлениям; объявление отправлено на проверку.'
+      moderationCode = moderationCode ?? 'LOW_PRICE_MARKET'
     }
 
     const statusBeforeTier = finalStatus
     finalStatus = needsModerationForHighRisk(trustState.trustTier, finalStatus)
     if (statusBeforeTier === 'ACTIVE' && finalStatus === 'MODERATION') {
-      const suffix = 'Для безопасности объявление отправлено на проверку.'
+      const suffix = 'По правилам сервиса объявление отправлено на проверку.'
       const prev = finalReason ? String(finalReason) : ''
-      finalReason = prev.includes('Для безопасности') ? prev : prev ? `${prev} ${suffix}` : suffix
+      finalReason = prev.includes('По правилам сервиса') ? prev : prev ? `${prev} ${suffix}` : suffix
     }
 
     const listing = await prisma.listing.create({
@@ -142,13 +155,16 @@ export async function POST(request: NextRequest) {
         video: data.video,
         location: data.location,
         city: data.city,
+        district: data.district,
         lat: data.lat,
         lng: data.lng,
+        showExactAddress: data.showExactAddress ?? false,
         attributes: data.attributes as Prisma.InputJsonValue | undefined,
         status: finalStatus,
         autoApproved: verdict.autoApproved && finalStatus === 'ACTIVE',
         rejectionReason: finalStatus === 'ACTIVE' ? null : finalReason,
         moderationReasonCode: moderationCode,
+        contentFingerprint: contentEval.contentFingerprint,
         returnedForRevision: false,
         categoryId: category.id,
         sellerId: user.id,
@@ -160,6 +176,7 @@ export async function POST(request: NextRequest) {
             name: true,
             avatar: true,
             phone: true,
+            showPhone: true,
             rating: true,
             reviewCount: true,
             isVerified: true,
@@ -179,9 +196,38 @@ export async function POST(request: NextRequest) {
       }).catch(console.error)
     }
 
-    void syncUserTrustSnapshot(user.id)
+    void notifyListingContentIncident({
+      title: data.title,
+      description: data.description,
+      price: data.price,
+      images: data.images,
+      categorySlug: data.categorySlug,
+      user: { id: user.id, isBanned: user.isBanned, isVerified: user.isVerified },
+      evaluation: contentEval,
+      listingId: listing.id,
+      request,
+    })
 
-    return NextResponse.json({ listing, moderation: { ...verdict, status: finalStatus, reason: finalReason } }, { status: 201 })
+    if (marketEstimate && data.price > 0) {
+      void persistListingPriceInsight(listing.id, marketEstimate, data.priceAnomalyReason).catch(console.error)
+    }
+
+    void syncUserTrustSnapshot(user.id)
+    void syncListingSlug(listing.id).catch(() => {})
+    if (finalStatus === "ACTIVE") {
+      const { tryListingBonuses } = await import("@/lib/bonuses/hooks")
+      void tryListingBonuses(listing, prisma).catch(() => {})
+      void notifyListingSearchIndex(listing.id)
+    }
+
+    const publicSeller = listing.seller
+      ? toPublicSellerContact(listing.seller, user.id)
+      : undefined
+
+    return NextResponse.json({
+      listing: { ...listing, seller: publicSeller },
+      moderation: { ...verdict, status: finalStatus, reason: finalReason },
+    }, { status: 201 })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors[0].message }, { status: 400 })

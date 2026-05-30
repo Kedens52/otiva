@@ -375,6 +375,9 @@ export async function recalculateUserTrust(userId: string): Promise<void> {
       lastTrustCalculatedAt: new Date(),
     },
   })
+
+  const { syncUserBadges } = await import("@/lib/badges/sync-user-badges")
+  void syncUserBadges(userId).catch(() => {})
 }
 
 /** Базовый лимит бесплатных активных + на модерации; TRUSTED +1. */

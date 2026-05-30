@@ -13,7 +13,13 @@ export const GET = withAdminApi(async () => {
       },
       orderBy: { updatedAt: "desc" },
       take: 80,
-      include: {
+      select: {
+        id: true,
+        rating: true,
+        text: true,
+        reviewModerationState: true,
+        isHidden: true,
+        createdAt: true,
         author: { select: { id: true, name: true, phone: true } },
         targetUser: { select: { id: true, name: true, phone: true } },
         listing: { select: { id: true, title: true } },

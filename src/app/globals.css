@@ -1,33 +1,35 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --font-marketplace: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --nashlo-blue: 207 95% 50%;
-    --nashlo-orange: 22 94% 52%;
-    --nashlo-mint: 158 72% 42%;
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --font-marketplace: var(--font-inter), "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --nashlo-mobile-nav-h: 58px;
+    --nashlo-mobile-ad-h: 46px;
+    --nashlo-blue: 221 83% 53%;
+    --nashlo-orange: 15 100% 54%;
+    --nashlo-mint: 142 72% 37%;
+    --background: 220 14% 96%;
+    --foreground: 220 26% 8%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 220 26% 8%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
+    --popover-foreground: 220 26% 8%;
+    --primary: 15 100% 54%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 26% 8%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 18 100% 97%;
+    --accent-foreground: 15 100% 38%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 15 100% 54%;
+    --radius: 0.875rem;
   }
 
   .dark {
@@ -67,12 +69,22 @@
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-white text-zinc-950 antialiased;
+    @apply bg-[#F7F8FA] text-[#111827] antialiased;
     font-family: var(--font-marketplace);
     font-weight: 400;
-    font-feature-settings: "kern";
-    text-rendering: geometricPrecision;
+    font-size: 15px;
+    line-height: 1.6;
+    font-feature-settings: "kern", "liga", "calt";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: hsl(var(--nashlo-orange) / 0.14);
+    color: hsl(var(--foreground));
   }
 
   img,
@@ -82,27 +94,25 @@
     max-width: 100%;
   }
 
-  h1,
-  h2,
-  h3,
-  nav,
-  button,
-  input,
-  textarea,
-  select {
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-marketplace);
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  nav, button, input, textarea, select {
     font-family: var(--font-marketplace);
   }
 }
 
 @media (max-width: 640px) {
-  input,
-  textarea,
-  select {
+  input, textarea, select {
     font-size: 16px;
   }
 }
 
-/* Scrollbar styling */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -111,10 +121,10 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-full;
+  @apply bg-muted-foreground/25 rounded-full;
 }
 
-/* Line clamp utilities */
+/* Line clamp */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -126,4 +136,91 @@
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+@layer components {
+  .nashlo-surface {
+    @apply rounded-2xl border border-[#E5E7EB] bg-white shadow-[0_1px_4px_rgba(17,24,39,0.06),0_4px_16px_rgba(17,24,39,0.04)];
+  }
+
+  .nashlo-focus {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--nashlo-orange)/0.35)] focus-visible:ring-offset-2;
+  }
+
+  .nashlo-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-[hsl(var(--nashlo-orange))] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[hsl(var(--nashlo-orange)/0.92)] active:scale-[0.98];
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-[hsl(var(--nashlo-orange))] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[hsl(var(--nashlo-orange)/0.92)] active:scale-[0.98];
+  }
+
+  .nashlo-btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-5 py-2.5 text-sm font-semibold text-[#374151] transition-all hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-5 py-2.5 text-sm font-semibold text-[#374151] transition-all hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.98];
+  }
+
+  .nashlo-page-shell {
+    @apply mx-auto w-full max-w-[1280px] px-4 sm:px-5 lg:px-6;
+  }
+
+  .nashlo-page-shell-wide {
+    @apply mx-auto w-full max-w-[1360px] px-4 sm:px-5 lg:px-6;
+  }
+
+  .legal-prose {
+    @apply text-base leading-[1.75] text-zinc-700;
+  }
+
+  .legal-prose > section + section {
+    @apply mt-10 scroll-mt-28 sm:mt-12;
+  }
+
+  .legal-prose h2 {
+    @apply scroll-mt-28 text-xl font-bold tracking-tight text-zinc-950 sm:text-2xl;
+  }
+
+  .legal-prose h3 {
+    @apply mt-4 text-base font-semibold text-zinc-950 sm:text-lg;
+  }
+
+  .legal-prose p {
+    @apply mt-3 max-w-none;
+  }
+
+  .legal-prose ul,
+  .legal-prose ol {
+    @apply mt-3 list-outside space-y-2.5 pl-5;
+  }
+
+  .legal-prose ul {
+    @apply list-disc;
+  }
+
+  .legal-prose ol {
+    @apply list-decimal;
+  }
+
+  .legal-prose li {
+    @apply pl-1;
+  }
+
+  .legal-prose a {
+    @apply font-medium text-blue-700 underline underline-offset-2 decoration-blue-300/80 transition hover:text-blue-900 hover:decoration-blue-600;
+  }
+
+  .legal-prose strong {
+    @apply font-semibold text-zinc-950;
+  }
+
+  .legal-prose table {
+    @apply mt-4 block w-full max-w-full overflow-x-auto rounded-xl border border-zinc-200 text-sm;
+  }
+
+  .legal-prose .legal-callout {
+    @apply mt-4 rounded-2xl border border-sky-200/80 bg-sky-50/90 px-4 py-3.5 text-sm leading-relaxed text-sky-950;
+  }
 }

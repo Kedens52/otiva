@@ -1,0 +1,3 @@
+# Bash scripts must use LF (CRLF breaks deploy on Windows → ssh).
+deploy.sh text eol=lf
+scripts/*.sh text eol=lf

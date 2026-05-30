@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "SiteBanner" ADD COLUMN IF NOT EXISTS "imageOnly" BOOLEAN NOT NULL DEFAULT false;

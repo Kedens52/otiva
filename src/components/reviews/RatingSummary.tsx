@@ -1,4 +1,4 @@
-import type { Review } from "@/components/reviews/ReviewCard"
+import type { ReviewCardData as Review } from "@/components/reviews/ReviewCard"
 
 function calcRating(reviews: Review[]) {
   if (!reviews.length) return { avg: 0, count: 0, dist: [0,0,0,0,0] }

@@ -7,7 +7,7 @@ export default function NotFound() {
       <h1 className="mt-4 text-2xl font-semibold text-zinc-950">Страница не найдена</h1>
       <p className="mt-2 text-zinc-500">Возможно, объявление удалено или ссылка устарела.</p>
       <div className="mt-8 flex gap-3">
-        <Link href="/" className="rounded-2xl bg-zinc-950 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800 transition">
+        <Link href="/" className="rounded-xl bg-[hsl(var(--nashlo-orange))] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[hsl(var(--nashlo-orange)/0.92)]">
           На главную
         </Link>
         <Link href="/search" className="rounded-2xl border border-zinc-200 px-6 py-3 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition">

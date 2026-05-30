@@ -4,6 +4,8 @@ import { getCurrentUser } from '@/lib/auth'
 import { notifyRecipientNewMessage } from '@/lib/push/notify-new-message'
 import { canSendMarketplaceMessage } from '@/lib/messaging-trust'
 import { messageLooksLikeDealRisk } from '@/lib/chat/deal-risk-keywords'
+import { personalConversationWhere } from '@/lib/messaging/scope'
+import { conversationDetailInclude } from '@/lib/messaging/conversation-include'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
@@ -18,33 +20,13 @@ export async function GET(
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: params.id },
-      include: {
-        members: {
-          include: {
-            user: { select: { id: true, name: true, avatar: true, phone: true } },
-          },
-        },
-        listing: {
-          select: { id: true, title: true, price: true, images: true, status: true },
-        },
-        messages: {
-          orderBy: { createdAt: 'asc' },
-          include: {
-            sender: { select: { id: true, name: true, avatar: true } },
-          },
-        },
-      },
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: params.id, ...personalConversationWhere(user.id) },
+      include: conversationDetailInclude,
     })
 
     if (!conversation) {
       return NextResponse.json({ error: 'Не найдено' }, { status: 404 })
-    }
-
-    const isMember = conversation.members.some((m) => m.userId === user.id)
-    if (!isMember) {
-      return NextResponse.json({ error: 'Нет доступа' }, { status: 403 })
     }
 
     // Mark as read
@@ -74,6 +56,14 @@ export async function POST(
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: params.id, ...personalConversationWhere(user.id) },
+      select: { id: true, isSupport: true },
+    })
+    if (!conversation) {
+      return NextResponse.json({ error: 'Нет доступа' }, { status: 403 })
+    }
+
     const member = await prisma.conversationMember.findUnique({
       where: {
         conversationId_userId: {
@@ -101,6 +91,7 @@ export async function POST(
         images: images || [],
         conversationId: params.id,
         senderId: user.id,
+        senderType: 'USER',
       },
       include: {
         sender: { select: { id: true, name: true, avatar: true } },

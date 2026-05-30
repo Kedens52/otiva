@@ -4,6 +4,9 @@ import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import { formatPrice } from "@/lib/listing-types"
 import { getAdminCsrfFromDocument } from "@/lib/admin/csrf-client"
+import { AdminPageHeader } from "@/components/admin/layout/AdminPageHeader"
+import { AdminPageShell } from "@/components/admin/layout/AdminPageShell"
+import { AdminStatusBadge } from "@/components/admin/ui/AdminStatusBadge"
 
 type ListingItem = {
   id: string
@@ -25,20 +28,53 @@ const STATUS_LABEL: Record<string, string> = {
   SOLD:       "Продано",
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  MODERATION: "bg-amber-50 text-amber-700",
-  ACTIVE:     "bg-emerald-50 text-emerald-700",
-  REJECTED:   "bg-red-50 text-red-600",
-  ARCHIVED:   "bg-zinc-100 text-zinc-500",
-  SOLD:       "bg-blue-50 text-blue-600",
-}
-
 async function adminPost(body: object): Promise<Response> {
   return fetch("/api/admin/listings", {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-CSRF-Token": getAdminCsrfFromDocument() },
     body: JSON.stringify(body),
   })
+}
+
+function ListingRowActions({
+  item,
+  showModeration,
+  onApprove,
+  onReject,
+}: {
+  item: ListingItem
+  showModeration: boolean
+  onApprove: () => void
+  onReject: () => void
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Link
+        href={`/admin/listings/${item.id}`}
+        className="rounded-xl border border-zinc-200 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
+      >
+        Детали
+      </Link>
+      {showModeration && (
+        <>
+          <button
+            type="button"
+            onClick={onApprove}
+            className="rounded-xl bg-zinc-950 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 transition"
+          >
+            Одобрить
+          </button>
+          <button
+            type="button"
+            onClick={onReject}
+            className="rounded-xl bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 transition"
+          >
+            Отклонить
+          </button>
+        </>
+      )}
+    </div>
+  )
 }
 
 // ── Rejection reason modal ────────────────────────────────────────────────────
@@ -175,27 +211,30 @@ export default function AdminListingsPage() {
         />
       )}
 
-      <main className="mx-auto max-w-7xl px-4 py-10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Объявления</h1>
-            <p className="mt-2 text-zinc-500">Управление объявлениями. Всего: {total}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            {status === "MODERATION" && items.length > 1 && (
-              <button
-                onClick={approveAll}
-                disabled={approving}
-                className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+      <AdminPageShell className="py-8">
+        <AdminPageHeader
+          title="Объявления"
+          description={`Управление объявлениями. Всего: ${total}`}
+          actions={
+            <div className="flex flex-wrap items-center gap-3">
+              {status === "MODERATION" && items.length > 1 && (
+                <button
+                  onClick={approveAll}
+                  disabled={approving}
+                  className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {approving ? "Одобряем..." : `Одобрить все (${items.length})`}
+                </button>
+              )}
+              <Link
+                href="/admin/moderation"
+                className="rounded-2xl bg-[hsl(var(--nashlo-orange))] px-5 py-3 text-sm font-semibold text-white shadow-sm"
               >
-                {approving ? "Одобряем..." : `Одобрить все (${items.length})`}
-              </button>
-            )}
-            <Link href="/admin/moderation" className="rounded-2xl bg-[hsl(var(--nashlo-orange))] px-5 py-3 text-sm font-semibold text-white shadow-sm">
-              Панель модерации
-            </Link>
-          </div>
-        </div>
+                Панель модерации
+              </Link>
+            </div>
+          }
+        />
 
         <div className="mt-6 flex gap-2 overflow-x-auto pb-1">
           {Object.entries(STATUS_LABEL).map(([key, label]) => (
@@ -225,50 +264,75 @@ export default function AdminListingsPage() {
               Нет объявлений со статусом «{STATUS_LABEL[status]}»
             </div>
           ) : (
-            <div className="divide-y divide-zinc-100">
+            <>
+            <div className="divide-y divide-zinc-100 lg:hidden">
               {items.map((item) => (
-                <div key={item.id} className="grid gap-3 px-5 py-4 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-center">
+                <article key={item.id} className="space-y-3 px-4 py-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="min-w-0 font-semibold text-zinc-950">{item.title}</p>
+                    <AdminStatusBadge variant="listing" status={item.status} className="shrink-0" />
+                  </div>
+                  <p className="text-sm text-zinc-500">
+                    {item.city ?? "—"} · {item.category.nameRu}
+                  </p>
+                  <p className="text-sm font-medium text-zinc-700">{formatPrice(item.price)}</p>
+                  <p className="text-xs text-zinc-500">
+                    <Link
+                      href={`/admin/users/${item.seller.id}`}
+                      className="font-medium text-zinc-700 hover:text-[hsl(var(--nashlo-orange))] hover:underline"
+                    >
+                      {item.seller.name ?? item.seller.phone}
+                    </Link>
+                  </p>
+                  {item.rejectionReason && (
+                    <p className="text-xs text-red-500">Причина: {item.rejectionReason}</p>
+                  )}
+                  <ListingRowActions
+                    item={item}
+                    showModeration={status === "MODERATION"}
+                    onApprove={() => moderate(item.id, "APPROVED")}
+                    onReject={() => setRejectTarget(item)}
+                  />
+                </article>
+              ))}
+            </div>
+
+            <div className="hidden divide-y divide-zinc-100 lg:block">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid gap-3 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center xl:grid-cols-[minmax(0,1fr)_auto_auto_auto]"
+                >
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-zinc-950">{item.title}</p>
                     <p className="text-sm text-zinc-500">
                       {item.city ?? "—"} · {item.category.nameRu} ·{" "}
-                      <Link href={`/admin/users/${item.seller.id}`}
-                        className="font-medium text-zinc-700 hover:text-[hsl(var(--nashlo-orange))] hover:underline transition">
+                      <Link
+                        href={`/admin/users/${item.seller.id}`}
+                        className="font-medium text-zinc-700 hover:text-[hsl(var(--nashlo-orange))] hover:underline transition"
+                      >
                         {item.seller.name ?? item.seller.phone}
                       </Link>
                     </p>
                     <p className="text-sm font-medium text-zinc-700">{formatPrice(item.price)}</p>
                     {item.rejectionReason && (
-                      <p className="mt-1 text-xs text-red-500">
-                        Причина: {item.rejectionReason}
-                      </p>
+                      <p className="mt-1 text-xs text-red-500">Причина: {item.rejectionReason}</p>
                     )}
                   </div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_COLOR[item.status] ?? "bg-zinc-100 text-zinc-500"}`}>
-                    {STATUS_LABEL[item.status] ?? item.status}
-                  </span>
-                  <Link href={`/admin/listings/${item.id}`}
-                    className="rounded-xl border border-zinc-200 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50">
-                    Детали
-                  </Link>
-                  {status === "MODERATION" && (
-                    <div className="flex gap-2">
-                      <button onClick={() => moderate(item.id, "APPROVED")}
-                        className="rounded-xl bg-zinc-950 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 transition">
-                        Одобрить
-                      </button>
-                      <button onClick={() => setRejectTarget(item)}
-                        className="rounded-xl bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 transition">
-                        Отклонить
-                      </button>
-                    </div>
-                  )}
+                  <AdminStatusBadge variant="listing" status={item.status} />
+                  <ListingRowActions
+                    item={item}
+                    showModeration={status === "MODERATION"}
+                    onApprove={() => moderate(item.id, "APPROVED")}
+                    onReject={() => setRejectTarget(item)}
+                  />
                 </div>
               ))}
             </div>
+            </>
           )}
         </div>
-      </main>
+      </AdminPageShell>
     </>
   )
 }

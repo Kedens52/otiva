@@ -1,443 +1,261 @@
-// ──────────────────────────────────────────────────────────────────────────────
-// Filter schema — extensible per category
-// To add a new category/subcategory: add an entry to CATEGORY_FILTERS below.
-// Each filter field has a type: "select" | "range" | "toggle" | "multi"
-// ──────────────────────────────────────────────────────────────────────────────
+import {
+  DATE_RANGE_FILTER_FIELD as MARKETPLACE_DATE_RANGE_FILTER_FIELD,
+  GENERAL_FILTERS as MARKETPLACE_GENERAL_FILTERS,
+  MARKETPLACE_CATEGORIES,
+  MARKETPLACE_FILTER_CONFIGS,
+  MARKETPLACE_GEO_FILTER_FIELDS,
+  getCategoryConfig,
+  type CategoryFilterConfig,
+  type FilterField,
+  type FilterOption,
+} from "@/config/marketplace-categories"
 
-export type FilterOption = { value: string; label: string }
+export type { CategoryFilterConfig, FilterField, FilterOption }
 
-export type FilterField =
-  | { type: "select";  key: string; label: string; options: FilterOption[] }
-  | { type: "range";   key: string; label: string; unit?: string }
-  | { type: "toggle";  key: string; label: string }
-  | { type: "multi";   key: string; label: string; options: FilterOption[] }
+export const CATEGORY_FILTERS: Record<string, CategoryFilterConfig> = MARKETPLACE_FILTER_CONFIGS
+export const DATE_RANGE_FILTER_FIELD = MARKETPLACE_DATE_RANGE_FILTER_FIELD
+export const GENERAL_FILTERS = MARKETPLACE_GENERAL_FILTERS
 
-export type CategoryFilterConfig = {
-  label: string
-  fields: FilterField[]
+export const LISTING_CATEGORY_SLUGS = new Set(MARKETPLACE_CATEGORIES.map((category) => category.slug))
+export const LISTING_SLUGS = MARKETPLACE_CATEGORIES.map((category) => category.slug)
+
+export function filterFieldsForCategory(slug: string | null): FilterField[] {
+  const categoryFields = slug && CATEGORY_FILTERS[slug] ? CATEGORY_FILTERS[slug].fields : []
+  const withGeo = [...MARKETPLACE_GEO_FILTER_FIELDS]
+  for (const field of categoryFields) {
+    if (!withGeo.some((geoField) => geoField.key === field.key)) {
+      withGeo.push(field)
+    }
+  }
+  const base = slug && CATEGORY_FILTERS[slug] ? withGeo : GENERAL_FILTERS
+  if (base.some((field) => field.key === "dateRange")) return base
+  return [DATE_RANGE_FILTER_FIELD, ...base]
 }
 
-// ── Shared field sets ─────────────────────────────────────────────────────────
-
-const CONDITION_FIELD: FilterField = {
-  type: "select", key: "condition", label: "Состояние",
-  options: [
-    { value: "new",  label: "Новое" },
-    { value: "used", label: "Б/у" },
-  ],
+export function labelForFilterField(slug: string | null, key: string): string {
+  const hit = filterFieldsForCategory(slug).find((f) => f.key === key)
+  if (hit) return hit.label
+  const map: Record<string, string> = {
+    q: "Поиск",
+    priceMin: "Цена от",
+    priceMax: "Цена до",
+    city: "Город",
+    district: "Район",
+    address: "Адрес",
+    radius: "Радиус поиска",
+    with_photos: "С фото",
+    category: "Категория",
+    animal_type: "Вид животного",
+    animal_gender: "Пол",
+    listing_type: "Тип объявления",
+    seller_type: "Тип продавца",
+    business_type: "Тип бизнеса",
+  }
+  return map[key] ?? key
 }
 
-const CITY_FIELD: FilterField = {
-  type: "select", key: "city", label: "Город",
-  options: [
-    "Москва","Санкт-Петербург","Казань","Екатеринбург","Новосибирск",
-    "Сочи","Краснодар","Нижний Новгород","Самара","Ростов-на-Дону",
-    "Уфа","Воронеж","Пермь","Тюмень","Омск","Красноярск","Волгоград",
-  ].map((c) => ({ value: c, label: c })),
+/** Разворачивает ключи полей в query-ключи (range → `key_from` / `key_to`). */
+export function expandFilterFieldsToUrlKeys(fields: FilterField[]): string[] {
+  const keys: string[] = []
+  for (const f of fields) {
+    if (f.type === "range") {
+      keys.push(`${f.key}_from`, `${f.key}_to`)
+    } else {
+      keys.push(f.key)
+    }
+  }
+  return keys
 }
 
-// ── Category-specific filter configs ─────────────────────────────────────────
-
-export const CATEGORY_FILTERS: Record<string, CategoryFilterConfig> = {
-  free: {
-    label: "Бесплатно / Отдам даром",
-    fields: [
-      CITY_FIELD,
-      CONDITION_FIELD,
-      {
-        type: "select", key: "free_type", label: "Формат",
-        options: [
-          { value: "pickup", label: "Самовывоз" },
-          { value: "delivery", label: "Могу передать" },
-          { value: "exchange", label: "Можно обмен" },
-        ],
-      },
-    ],
-  },
-
-  // ── Транспорт ──────────────────────────────────────────────────────────────
-  cars: {
-    label: "Транспорт",
-    fields: [
-      {
-        type: "select", key: "vehicle_type", label: "Тип транспорта",
-        options: [
-          { value: "car",        label: "Легковые" },
-          { value: "truck",      label: "Грузовые" },
-          { value: "moto",       label: "Мотоциклы" },
-          { value: "commercial", label: "Коммерческий" },
-          { value: "special",    label: "Спецтехника" },
-        ],
-      },
-      {
-        type: "select", key: "make", label: "Марка",
-        options: [
-          "Toyota","BMW","Mercedes-Benz","Lada","Kia","Hyundai","Volkswagen",
-          "Audi","Skoda","Renault","Nissan","Ford","Mazda","Honda","Mitsubishi",
-          "Lexus","Volvo","Land Rover","Porsche","HAVAL","Chery","Geely",
-        ].map((m) => ({ value: m.toLowerCase().replace(/\s/g, "-"), label: m })),
-      },
-      {
-        type: "range", key: "year", label: "Год выпуска",
-      },
-      {
-        type: "range", key: "mileage", label: "Пробег, км",
-      },
-      {
-        type: "select", key: "body_type", label: "Кузов",
-        options: [
-          { value: "sedan",    label: "Седан" },
-          { value: "hatchback",label: "Хэтчбек" },
-          { value: "suv",      label: "Внедорожник / SUV" },
-          { value: "wagon",    label: "Универсал" },
-          { value: "coupe",    label: "Купе" },
-          { value: "minivan",  label: "Минивэн" },
-          { value: "pickup",   label: "Пикап" },
-          { value: "cabriolet",label: "Кабриолет" },
-        ],
-      },
-      {
-        type: "select", key: "fuel", label: "Двигатель",
-        options: [
-          { value: "petrol",   label: "Бензин" },
-          { value: "diesel",   label: "Дизель" },
-          { value: "hybrid",   label: "Гибрид" },
-          { value: "electric", label: "Электро" },
-          { value: "gas",      label: "Газ / Газ+бензин" },
-        ],
-      },
-      {
-        type: "select", key: "transmission", label: "КПП",
-        options: [
-          { value: "auto",   label: "Автомат" },
-          { value: "manual", label: "Механика" },
-          { value: "robot",  label: "Робот" },
-          { value: "cvt",    label: "Вариатор" },
-        ],
-      },
-      {
-        type: "select", key: "drive", label: "Привод",
-        options: [
-          { value: "fwd",  label: "Передний" },
-          { value: "rwd",  label: "Задний" },
-          { value: "4wd",  label: "Полный" },
-        ],
-      },
-      { type: "toggle", key: "with_photos", label: "Только с фото" },
-      CITY_FIELD,
-    ],
-  },
-
-  // ── Недвижимость ───────────────────────────────────────────────────────────
-  "real-estate": {
-    label: "Недвижимость",
-    fields: [
-      {
-        type: "select", key: "deal_type", label: "Тип сделки",
-        options: [
-          { value: "sell", label: "Продажа" },
-          { value: "rent", label: "Аренда" },
-          { value: "rent_daily", label: "Посуточно" },
-        ],
-      },
-      {
-        type: "select", key: "property_type", label: "Тип объекта",
-        options: [
-          { value: "apartment", label: "Квартира" },
-          { value: "room",      label: "Комната" },
-          { value: "house",     label: "Дом / Дача" },
-          { value: "land",      label: "Участок" },
-          { value: "commercial",label: "Коммерческая" },
-          { value: "garage",    label: "Гараж" },
-        ],
-      },
-      {
-        type: "multi", key: "rooms", label: "Комнат",
-        options: [
-          { value: "studio", label: "Студия" },
-          { value: "1",      label: "1" },
-          { value: "2",      label: "2" },
-          { value: "3",      label: "3" },
-          { value: "4+",     label: "4+" },
-        ],
-      },
-      { type: "range", key: "area",  label: "Площадь, м²" },
-      { type: "range", key: "floor", label: "Этаж" },
-      {
-        type: "select", key: "building_type", label: "Тип дома",
-        options: [
-          { value: "panel",  label: "Панельный" },
-          { value: "brick",  label: "Кирпичный" },
-          { value: "mono",   label: "Монолитный" },
-          { value: "wood",   label: "Деревянный" },
-        ],
-      },
-      { type: "toggle", key: "with_photos",   label: "Только с фото" },
-      { type: "toggle", key: "from_owner",    label: "Только от собственника" },
-      CITY_FIELD,
-    ],
-  },
-
-  // ── Электроника ────────────────────────────────────────────────────────────
-  electronics: {
-    label: "Электроника",
-    fields: [
-      {
-        type: "select", key: "subcategory", label: "Подкатегория",
-        options: [
-          { value: "phones",   label: "Смартфоны" },
-          { value: "tablets",  label: "Планшеты" },
-          { value: "laptops",  label: "Ноутбуки" },
-          { value: "pc",       label: "Компьютеры" },
-          { value: "tv",       label: "Телевизоры" },
-          { value: "audio",    label: "Аудио / Наушники" },
-          { value: "photo",    label: "Фото / Видео" },
-          { value: "consoles", label: "Игровые консоли" },
-          { value: "wearables",label: "Умные часы" },
-          { value: "other",    label: "Другое" },
-        ],
-      },
-      {
-        type: "select", key: "brand", label: "Бренд",
-        options: [
-          "Apple","Samsung","Xiaomi","Huawei","Sony","LG","Asus","Lenovo",
-          "HP","Dell","MSI","Acer","OnePlus","Realme","Google","Nothing",
-        ].map((b) => ({ value: b.toLowerCase(), label: b })),
-      },
-      CONDITION_FIELD,
-      { type: "toggle", key: "with_photos", label: "Только с фото" },
-      CITY_FIELD,
-    ],
-  },
-
-  // ── Дом и интерьер ─────────────────────────────────────────────────────────
-  home: {
-    label: "Дом и интерьер",
-    fields: [
-      {
-        type: "select", key: "subcategory", label: "Подкатегория",
-        options: [
-          { value: "furniture",  label: "Мебель" },
-          { value: "appliances", label: "Бытовая техника" },
-          { value: "kitchen",    label: "Кухня" },
-          { value: "lighting",   label: "Освещение" },
-          { value: "textiles",   label: "Текстиль" },
-          { value: "tools",      label: "Инструменты" },
-          { value: "garden",     label: "Дача и сад" },
-          { value: "other",      label: "Другое" },
-        ],
-      },
-      CONDITION_FIELD,
-      { type: "toggle", key: "with_photos", label: "Только с фото" },
-      CITY_FIELD,
-    ],
-  },
-
-  // ── Одежда ─────────────────────────────────────────────────────────────────
-  fashion: {
-    label: "Одежда и обувь",
-    fields: [
-      {
-        type: "select", key: "gender", label: "Для кого",
-        options: [
-          { value: "women", label: "Женское" },
-          { value: "men",   label: "Мужское" },
-          { value: "kids",  label: "Детское" },
-          { value: "unisex",label: "Унисекс" },
-        ],
-      },
-      {
-        type: "select", key: "subcategory", label: "Тип",
-        options: [
-          { value: "outerwear", label: "Верхняя одежда" },
-          { value: "shoes",     label: "Обувь" },
-          { value: "accessories",label: "Аксессуары" },
-          { value: "bags",      label: "Сумки" },
-          { value: "sport",     label: "Спортивная одежда" },
-        ],
-      },
-      {
-        type: "select", key: "size", label: "Размер",
-        options: ["XS","S","M","L","XL","XXL","XXXL"].map((s) => ({ value: s, label: s })),
-      },
-      CONDITION_FIELD,
-      { type: "toggle", key: "with_photos", label: "Только с фото" },
-      CITY_FIELD,
-    ],
-  },
-
-  // ── Детям ──────────────────────────────────────────────────────────────────
-  kids: {
-    label: "Детям",
-    fields: [
-      {
-        type: "select", key: "subcategory", label: "Подкатегория",
-        options: [
-          { value: "clothing",   label: "Одежда" },
-          { value: "toys",       label: "Игрушки" },
-          { value: "strollers",  label: "Коляски" },
-          { value: "furniture",  label: "Мебель" },
-          { value: "school",     label: "Школа и развитие" },
-          { value: "sport",      label: "Спорт" },
-          { value: "nutrition",  label: "Питание и уход" },
-        ],
-      },
-      {
-        type: "select", key: "age_group", label: "Возраст",
-        options: [
-          { value: "0-1",  label: "До 1 года" },
-          { value: "1-3",  label: "1–3 года" },
-          { value: "3-7",  label: "3–7 лет" },
-          { value: "7-12", label: "7–12 лет" },
-          { value: "12+",  label: "Подростки" },
-        ],
-      },
-      CONDITION_FIELD,
-      CITY_FIELD,
-    ],
-  },
-
-  // ── Спорт ──────────────────────────────────────────────────────────────────
-  sport: {
-    label: "Спорт и отдых",
-    fields: [
-      {
-        type: "select", key: "subcategory", label: "Подкатегория",
-        options: [
-          { value: "bikes",     label: "Велосипеды" },
-          { value: "fitness",   label: "Тренажёры" },
-          { value: "skiing",    label: "Лыжи / Сноуборд" },
-          { value: "tourism",   label: "Туризм / Кемпинг" },
-          { value: "fishing",   label: "Рыбалка / Охота" },
-          { value: "team",      label: "Командные виды" },
-          { value: "scooters",  label: "Самокаты / Гироскутеры" },
-          { value: "water",     label: "Водный спорт" },
-        ],
-      },
-      CONDITION_FIELD,
-      CITY_FIELD,
-    ],
-  },
-
-  // ── Работа ─────────────────────────────────────────────────────────────────
-  jobs: {
-    label: "Работа",
-    fields: [
-      {
-        type: "select", key: "employment_type", label: "Тип занятости",
-        options: [
-          { value: "full",      label: "Полная занятость" },
-          { value: "part",      label: "Частичная занятость" },
-          { value: "remote",    label: "Удалённая работа" },
-          { value: "contract",  label: "Договор / проект" },
-          { value: "internship",label: "Стажировка" },
-        ],
-      },
-      {
-        type: "select", key: "experience", label: "Опыт",
-        options: [
-          { value: "no",   label: "Без опыта" },
-          { value: "1-3",  label: "1–3 года" },
-          { value: "3-5",  label: "3–5 лет" },
-          { value: "5+",   label: "Более 5 лет" },
-        ],
-      },
-      {
-        type: "select", key: "schedule", label: "График",
-        options: [
-          { value: "5_2",    label: "5/2" },
-          { value: "2_2",    label: "2/2" },
-          { value: "flex",   label: "Гибкий" },
-          { value: "shift",  label: "Сменный" },
-        ],
-      },
-      CITY_FIELD,
-    ],
-  },
-
-  // ── Животные ───────────────────────────────────────────────────────────────
-  animals: {
-    label: "Животные",
-    fields: [
-      {
-        type: "select", key: "subcategory", label: "Вид животного",
-        options: [
-          { value: "dogs",    label: "Собаки" },
-          { value: "cats",    label: "Кошки" },
-          { value: "birds",   label: "Птицы" },
-          { value: "fish",    label: "Рыбки и аквариумы" },
-          { value: "rodents", label: "Грызуны" },
-          { value: "reptiles",label: "Рептилии" },
-          { value: "other",   label: "Другие животные" },
-          { value: "food",    label: "Корм и аксессуары" },
-          { value: "vet",     label: "Ветеринарные услуги" },
-        ],
-      },
-      CONDITION_FIELD,
-      CITY_FIELD,
-    ],
-  },
-
-  // ── Хобби ──────────────────────────────────────────────────────────────────
-  hobby: {
-    label: "Хобби и отдых",
-    fields: [
-      {
-        type: "select", key: "subcategory", label: "Подкатегория",
-        options: [
-          { value: "books",    label: "Книги и журналы" },
-          { value: "music",    label: "Музыкальные инструменты" },
-          { value: "art",      label: "Рисование и творчество" },
-          { value: "games",    label: "Игры и коллекционирование" },
-          { value: "travel",   label: "Туризм" },
-          { value: "photo",    label: "Фото и видео" },
-          { value: "handmade", label: "Рукоделие" },
-          { value: "other",    label: "Другое" },
-        ],
-      },
-      CONDITION_FIELD,
-      CITY_FIELD,
-    ],
-  },
-
-  // ── Другое ─────────────────────────────────────────────────────────────────
-  other: {
-    label: "Другое",
-    fields: [
-      CONDITION_FIELD,
-      CITY_FIELD,
-    ],
-  },
-
-  // ── Услуги ─────────────────────────────────────────────────────────────────
-  services: {
-    label: "Услуги",
-    fields: [
-      {
-        type: "select", key: "subcategory", label: "Подкатегория",
-        options: [
-          { value: "repair",   label: "Ремонт и строительство" },
-          { value: "cleaning", label: "Уборка" },
-          { value: "beauty",   label: "Красота и здоровье" },
-          { value: "it",       label: "IT и интернет" },
-          { value: "design",   label: "Дизайн и реклама" },
-          { value: "legal",    label: "Юридические" },
-          { value: "finance",  label: "Бухгалтерия и финансы" },
-          { value: "delivery", label: "Доставка и переезды" },
-          { value: "tutor",    label: "Репетиторы" },
-          { value: "photo",    label: "Фото и видео" },
-        ],
-      },
-      CITY_FIELD,
-    ],
-  },
+export function getAllowedListingSearchParamKeys(categorySlug: string | null): Set<string> {
+  const allowed = new Set<string>([
+    "q",
+    "query",
+    "category",
+    "cat",
+    "priceMin",
+    "priceMax",
+    "sort",
+    "sortBy",
+    "sortOrder",
+    "page",
+    "pageSize",
+    "limit",
+    "lat",
+    "lng",
+    "nearLat",
+    "nearLng",
+    "dateRange",
+  ])
+  for (const k of expandFilterFieldsToUrlKeys(filterFieldsForCategory(categorySlug))) {
+    allowed.add(k)
+  }
+  return allowed
 }
 
-// ── General (fallback) filters ────────────────────────────────────────────────
-export const GENERAL_FILTERS: FilterField[] = [
-  CONDITION_FIELD,
-  CITY_FIELD,
-]
+const QUERY_ALIASES: Record<string, string> = {
+  carBrand: "make",
+  carModel: "model",
+  hasPhoto: "with_photos",
+  productBrand: "brand",
+  nearLat: "lat",
+  nearLng: "lng",
+}
+
+const ALLOWED_SORT_BY = new Set([
+  "default",
+  "popular",
+  "price_asc",
+  "price_desc",
+  "newest",
+  "new",
+  "nearby",
+  "promoted_first",
+  "promoted",
+  "relevance",
+  "views_desc",
+  "createdAt",
+  "price",
+  "views",
+  "uniqueViews",
+])
+
+function collectAllowedSubcategoryValues(slug: string | null): Set<string> {
+  const out = new Set<string>()
+  if (!slug) return out
+  for (const f of filterFieldsForCategory(slug)) {
+    if (f.key !== "subcategory") continue
+    if (f.type === "select" || f.type === "multi") {
+      for (const o of f.options) out.add(o.value)
+    }
+  }
+  const cfg = getCategoryConfig(slug)
+  for (const sub of cfg?.subcategories ?? []) {
+    const p = sub.presetAttributes?.subcategory
+    if (typeof p === "string" && p) out.add(p)
+  }
+  return out
+}
+
+function categoryHasSubcategoryField(slug: string | null): boolean {
+  if (!slug) return false
+  return filterFieldsForCategory(slug).some((f) => f.key === "subcategory")
+}
+
+/** Удаляет query-ключи вне политики категории (после применения QUERY_ALIASES в normalize). */
+export function sanitizeListingSearchParams(sp: URLSearchParams): URLSearchParams {
+  const n = new URLSearchParams(sp.toString())
+
+  const categoryVal = n.get("category")?.trim() || null
+  const catVal = n.get("cat")?.trim() || null
+  let slug: string | null = null
+  if (categoryVal && LISTING_CATEGORY_SLUGS.has(categoryVal)) {
+    slug = categoryVal
+  } else if (catVal && LISTING_CATEGORY_SLUGS.has(catVal)) {
+    slug = catVal
+    n.set("category", catVal)
+  } else {
+    if (categoryVal) n.delete("category")
+    if (catVal) n.delete("cat")
+    slug = null
+  }
+
+  if (slug) {
+    n.set("category", slug)
+  }
+
+  // Старые ссылки (?subcategory=dogs и т.п.) — в объявлениях хранится animal_type
+  if (slug === "animals") {
+    const rawSub = n.get("subcategory")?.trim()
+    if (rawSub) {
+      const legacyToAnimalType: Record<string, string> = {
+        dogs: "dogs",
+        cats: "cats",
+        birds: "birds",
+        fish: "fish",
+        rodents: "rodents",
+        reptiles: "reptiles",
+        farm: "farm",
+        other: "other",
+        supplies: "supplies",
+        food: "supplies",
+        vet: "services",
+        services: "services",
+        pets: "other",
+      }
+      const mapped = legacyToAnimalType[rawSub]
+      if (mapped && !n.get("animal_type")?.trim()) n.set("animal_type", mapped)
+    }
+    n.delete("subcategory")
+  }
+
+  const subAllowed = collectAllowedSubcategoryValues(slug)
+  const hasSubField = categoryHasSubcategoryField(slug)
+  if (!hasSubField && subAllowed.size === 0) {
+    n.delete("subcategory")
+  } else if (subAllowed.size > 0) {
+    const sv = n.get("subcategory")?.trim()
+    if (sv) {
+      const parts = sv.split(",").map((part) => part.trim()).filter(Boolean)
+      const valid = parts.filter((part) => subAllowed.has(part))
+      if (valid.length === 0) {
+        n.delete("subcategory")
+      } else if (valid.length === 1) {
+        n.set("subcategory", valid[0])
+      } else {
+        n.set("subcategory", valid.join(","))
+      }
+    }
+  } else if (hasSubField && subAllowed.size === 0) {
+    n.delete("subcategory")
+  }
+
+  const allowed = getAllowedListingSearchParamKeys(slug)
+  const allKeys = new Set<string>()
+  for (const k of Array.from(n.keys())) allKeys.add(k)
+  for (const key of Array.from(allKeys)) {
+    if (!allowed.has(key)) n.delete(key)
+  }
+
+  const sortByRaw = n.get("sortBy")?.trim()
+  if (sortByRaw && !ALLOWED_SORT_BY.has(sortByRaw)) {
+    n.delete("sortBy")
+    n.delete("sort")
+    n.delete("sortOrder")
+  }
+
+  const c = n.get("category")?.trim()
+  if (c) n.set("cat", c)
+  else n.delete("cat")
+
+  if (n.get("q")?.trim() && n.has("query")) n.delete("query")
+  if (n.get("pageSize") && n.has("limit")) n.delete("limit")
+  if (n.get("sortBy") && n.has("sort")) n.delete("sort")
+  if (n.get("lat") && n.has("nearLat")) n.delete("nearLat")
+  if (n.get("lng") && n.has("nearLng")) n.delete("nearLng")
+  if (n.get("make") && n.has("carBrand")) n.delete("carBrand")
+  if (n.get("model") && n.has("carModel")) n.delete("carModel")
+  if (n.get("with_photos") && n.has("hasPhoto")) n.delete("hasPhoto")
+  if (n.get("brand") && n.has("productBrand")) n.delete("productBrand")
+
+  return n
+}
+
+export function normalizeListingsSearchParams(sp: URLSearchParams): URLSearchParams {
+  const n = new URLSearchParams(sp.toString())
+  for (const [alias, target] of Object.entries(QUERY_ALIASES)) {
+    const v = n.get(alias)
+    if (v != null && v !== "" && !n.has(target)) n.set(target, v)
+  }
+  if (n.get("hasPhoto") === "1" && !n.get("with_photos")) n.set("with_photos", "1")
+  const lim = n.get("limit")
+  if (lim && !n.get("pageSize")) n.set("pageSize", lim)
+  const sort = n.get("sort")
+  if (sort && !n.get("sortBy")) n.set("sortBy", sort)
+  const legacyQ = n.get("query")?.trim()
+  if (legacyQ && !n.get("q")?.trim()) n.set("q", legacyQ)
+  return sanitizeListingSearchParams(n)
+}
 
 // ── Filter state type ─────────────────────────────────────────────────────────
 export type FilterState = Record<string, string | string[]>
@@ -448,4 +266,39 @@ export function emptyFilters(): FilterState {
 
 export function hasActiveFilters(state: FilterState): boolean {
   return Object.values(state).some((v) => (Array.isArray(v) ? v.length > 0 : Boolean(v)))
+}
+
+/** Параметры маршрута / поиска, не относящиеся к фильтрам категории. */
+const META_QUERY_KEYS = new Set([
+  "q",
+  "query",
+  "cat",
+  "priceMin",
+  "priceMax",
+  "sortBy",
+  "sortOrder",
+  "sort",
+  "page",
+  "pageSize",
+  "limit",
+  "lat",
+  "lng",
+  "category",
+  "nearLat",
+  "nearLng",
+])
+
+/** Разбор query-параметров страницы поиска в состояние фильтров (для гидрации из URL). */
+export function parseFiltersFromSearchParams(params: URLSearchParams): FilterState {
+  const normalized = normalizeListingsSearchParams(new URLSearchParams(params.toString()))
+  const out: FilterState = {}
+  for (const [key, value] of Array.from(normalized.entries())) {
+    if (!value || META_QUERY_KEYS.has(key)) continue
+    if (key === "rooms") {
+      out[key] = value.split(",").filter(Boolean)
+    } else {
+      out[key] = value
+    }
+  }
+  return out
 }

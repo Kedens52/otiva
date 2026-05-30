@@ -1,4 +1,6 @@
 import Link from "next/link"
+import { PAGE_CONTAINER_CLASS } from "@/components/layout/PageContainer"
+import { ResponsiveTableCards } from "@/components/ui/ResponsiveTableCards"
 
 export const metadata = { title: "Тарифы — Нашло" }
 
@@ -37,9 +39,17 @@ const subscriptions = [
   },
 ]
 
+const compareRows = [
+  { service: "Бесплатных объявлений", nashlo: "3", avito: "1" },
+  { service: "Поднять в поиске", nashlo: "49 ₽", avito: "от 149 ₽" },
+  { service: "Выделение цветом", nashlo: "29 ₽ / 7 дн", avito: "от 59 ₽ / 7 дн" },
+  { service: "Турбо-продажа", nashlo: "99 ₽ / 3 дн", avito: "от 299 ₽" },
+  { service: "Базовая подписка", nashlo: "499 ₽/мес", avito: "от 1 499 ₽/мес" },
+] as const
+
 export default function PricingPage() {
   return (
-    <main className="mx-auto max-w-5xl px-4 py-12 pb-28 lg:pb-12">
+    <main className={`${PAGE_CONTAINER_CLASS} py-12 pb-28 lg:pb-12`}>
 
       {/* Hero */}
       <div className="text-center">
@@ -105,7 +115,7 @@ export default function PricingPage() {
           {packs.map((pack) => (
             <div key={pack.label} className={`relative rounded-[24px] border bg-white p-5 shadow-sm ${pack.popular ? "border-zinc-950" : "border-zinc-200"}`}>
               {pack.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-zinc-950 px-3 py-1 text-[10px] font-semibold text-white">Популярный</div>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[hsl(var(--nashlo-orange))] px-3 py-1 text-[10px] font-semibold text-white">Популярный</div>
               )}
               <p className="text-sm font-semibold text-zinc-500">{pack.label}</p>
               <p className="mt-1 text-3xl font-semibold text-zinc-950">{pack.price} <span className="text-base font-normal">₽</span></p>
@@ -145,7 +155,7 @@ export default function PricingPage() {
           {subscriptions.map((sub) => (
             <div key={sub.name} className={`relative flex flex-col rounded-[24px] border bg-white p-5 shadow-sm ${sub.popular ? "border-zinc-950" : "border-zinc-200"}`}>
               {sub.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-zinc-950 px-3 py-1 text-[10px] font-semibold text-white">Лучший выбор</div>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[hsl(var(--nashlo-orange))] px-3 py-1 text-[10px] font-semibold text-white">Лучший выбор</div>
               )}
               <p className="font-semibold text-zinc-950">{sub.name}</p>
               <p className="mt-2 text-3xl font-semibold text-zinc-950">{sub.price} <span className="text-sm font-normal text-zinc-500">₽/мес</span></p>
@@ -165,31 +175,16 @@ export default function PricingPage() {
       {/* Compare with Avito */}
       <div className="mt-12 rounded-[28px] border border-zinc-100 bg-zinc-50 p-6">
         <h2 className="text-lg font-semibold text-zinc-950">Нашло vs Авито</h2>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200">
-                <th className="pb-3 pr-6 text-left font-semibold text-zinc-950">Услуга</th>
-                <th className="pb-3 pr-6 text-left font-semibold text-[hsl(var(--nashlo-orange))]">Нашло</th>
-                <th className="pb-3 text-left font-semibold text-zinc-400">Авито</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {[
-                ["Бесплатных объявлений", "3", "1"],
-                ["Поднять в поиске", "49 ₽", "от 149 ₽"],
-                ["Выделение цветом", "29 ₽ / 7 дн", "от 59 ₽ / 7 дн"],
-                ["Турбо-продажа", "99 ₽ / 3 дн", "от 299 ₽"],
-                ["Базовая подписка", "499 ₽/мес", "от 1 499 ₽/мес"],
-              ].map(([service, nashlo, avito]) => (
-                <tr key={service}>
-                  <td className="py-3 pr-6 text-zinc-700">{service}</td>
-                  <td className="py-3 pr-6 font-semibold text-zinc-950">{nashlo}</td>
-                  <td className="py-3 text-zinc-400">{avito}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="mt-4">
+          <ResponsiveTableCards
+            rowKey="service"
+            columns={[
+              { key: "service", label: "Услуга" },
+              { key: "nashlo", label: "Нашло", className: "font-semibold text-zinc-950" },
+              { key: "avito", label: "Авито", className: "text-zinc-500" },
+            ]}
+            rows={[...compareRows]}
+          />
         </div>
         <p className="mt-4 text-xs text-zinc-400">Цены Авито приведены на январь 2025 г. и могут отличаться в зависимости от региона и категории.</p>
       </div>

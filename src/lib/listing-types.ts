@@ -1,3 +1,8 @@
+import { MARKETPLACE_CATEGORIES } from "@/lib/category-config"
+import { getListingCategoryBreadcrumbPath } from "@/lib/seo/paths"
+import type { PublicUserBadge } from "@/lib/badges/badge-map"
+import { getListingPublicPath } from "@/lib/seo/paths"
+
 // ── Unified listing type (matches Prisma API response shape) ─────────────────
 
 export type AppListing = {
@@ -9,11 +14,18 @@ export type AppListing = {
   images: string[]
   video?: string | null
   city?: string | null
+  district?: string | null
   location?: string | null
   lat?: number | null
   lng?: number | null
+  showExactAddress?: boolean
+  distanceKm?: number | null
   isPromoted?: boolean
+  views?: number
+  uniqueViews?: number
   createdAt?: string
+  /** SEO slug из БД (может отсутствовать в старых ответах API) */
+  slug?: string | null
   category: { slug: string; name?: string; nameRu?: string } | string
   seller?: {
     id?: string
@@ -23,8 +35,13 @@ export type AppListing = {
     rating?: number
     reviewCount?: number
     isVerified?: boolean
+    badges?: PublicUserBadge[]
   }
   _count?: { favorites?: number }
+  /** Заполняется GET /api/listings для текущего пользователя */
+  favorited?: boolean
+  attributes?: Record<string, unknown> | null
+  vinStatus?: string | null
 }
 
 export type CategoryMeta = {
@@ -33,21 +50,11 @@ export type CategoryMeta = {
   href: string
 }
 
-export const CATEGORY_META: CategoryMeta[] = [
-  { slug: "free",        title: "Бесплатно / Отдам даром", href: "/search?cat=free" },
-  { slug: "cars",        title: "Транспорт",       href: "/search?cat=cars" },
-  { slug: "real-estate", title: "Недвижимость",    href: "/search?cat=real-estate" },
-  { slug: "electronics", title: "Электроника",     href: "/search?cat=electronics" },
-  { slug: "home",        title: "Дом и интерьер",  href: "/search?cat=home" },
-  { slug: "fashion",     title: "Одежда и обувь",  href: "/search?cat=fashion" },
-  { slug: "kids",        title: "Детские товары",  href: "/search?cat=kids" },
-  { slug: "sport",       title: "Спорт и отдых",   href: "/search?cat=sport" },
-  { slug: "services",    title: "Услуги",          href: "/search?cat=services" },
-  { slug: "jobs",        title: "Работа",          href: "/search?cat=jobs" },
-  { slug: "animals",     title: "Животные",        href: "/search?cat=animals" },
-  { slug: "hobby",       title: "Хобби",           href: "/search?cat=hobby" },
-  { slug: "other",       title: "Другое",          href: "/search?cat=other" },
-]
+export const CATEGORY_META: CategoryMeta[] = MARKETPLACE_CATEGORIES.map((category) => ({
+  slug: category.slug,
+  title: category.title,
+  href: getListingCategoryBreadcrumbPath({ categorySlug: category.slug }),
+}))
 
 export function categorySlug(listing: AppListing): string {
   if (typeof listing.category === "string") return listing.category
@@ -55,8 +62,12 @@ export function categorySlug(listing: AppListing): string {
 }
 
 export function listingHref(listing: AppListing): string {
-  const slug = categorySlug(listing)
-  return `/listings/${listing.id}`
+  return getListingPublicPath({
+    id: listing.id,
+    slug: listing.slug,
+    title: listing.title,
+    city: listing.city,
+  })
 }
 
 export function formatPrice(price: number): string {
@@ -78,4 +89,36 @@ const CATEGORY_TONES: Record<string, string> = {
 
 export function imageToneForCategory(slug: string): string {
   return CATEGORY_TONES[slug] ?? "from-zinc-300 to-zinc-200"
+}
+
+/** Реальное фото объявления (не заглушка категории). */
+/** Канонический URL фото: только /uploads (старые /api/uploads из БД нормализуем). */
+export function normalizeListingImageUrl(url: string): string {
+  if (url.startsWith("/api/uploads/")) {
+    return url.replace("/api/uploads/", "/uploads/")
+  }
+  return url
+}
+
+export function isListingPhotoUrl(url: string | null | undefined): url is string {
+  if (!url?.trim()) return false
+  const normalized = normalizeListingImageUrl(url.trim())
+  return (
+    normalized.startsWith("http://") ||
+    normalized.startsWith("https://") ||
+    normalized.startsWith("/uploads/") ||
+    normalized.startsWith("data:image/")
+  )
+}
+
+export function listingThumbnailSrc(
+  image: string | null | undefined,
+  categorySlugValue: string,
+): { src: string; isPhoto: boolean } {
+  const isPhoto = isListingPhotoUrl(image)
+  const slug = categorySlugValue || "goods"
+  return {
+    src: isPhoto ? normalizeListingImageUrl(image) : `/categories/${slug}.svg`,
+    isPhoto,
+  }
 }

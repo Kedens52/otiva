@@ -1,24 +1,40 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server"
+import { geocodeAddress, isGeocodingConfigured } from "@/lib/geo/geocode"
 
 export async function GET(request: NextRequest) {
-  const address = request.nextUrl.searchParams.get('address')
-  if (!address) return NextResponse.json({ error: 'Address required' }, { status: 400 })
+  const address = request.nextUrl.searchParams.get("address")
+  const city = request.nextUrl.searchParams.get("city")
+  const district = request.nextUrl.searchParams.get("district")
+  if (!address && !district) {
+    return NextResponse.json({ error: "Address required" }, { status: 400 })
+  }
 
-  const apiKey = process.env.YMAPS_GEOCODER_KEY
-  if (!apiKey) return NextResponse.json({ error: 'Geocoder not configured' }, { status: 503 })
+  if (!isGeocodingConfigured()) {
+    return NextResponse.json({
+      available: false,
+      inDevelopment: true,
+      message: "В разработке",
+    })
+  }
 
   try {
-    const url = `https://geocode-maps.yandex.ru/1.x/?apikey=${apiKey}&geocode=${encodeURIComponent(address)}&format=json&results=1&lang=ru_RU`
-    const res = await fetch(url, { next: { revalidate: 3600 } })
-    const data = await res.json()
+    const result = await geocodeAddress({ city, district, address })
+    if (!result) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
 
-    const pos = data?.response?.GeoObjectCollection?.featureMember?.[0]?.GeoObject?.Point?.pos
-    if (!pos) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
-    const [lngStr, latStr] = pos.split(' ')
-    return NextResponse.json({ lat: parseFloat(latStr), lng: parseFloat(lngStr) })
+    return NextResponse.json({
+      available: true,
+      latitude: result.latitude,
+      longitude: result.longitude,
+      city: result.city,
+      district: result.district,
+      formattedAddress: result.formattedAddress,
+      lat: result.latitude,
+      lng: result.longitude,
+    })
   } catch (err) {
-    console.error('geocode error', err)
-    return NextResponse.json({ error: 'Geocoder error' }, { status: 500 })
+    console.error("geocode error", err)
+    return NextResponse.json({ error: "Geocoder error" }, { status: 500 })
   }
 }

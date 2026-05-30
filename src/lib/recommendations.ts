@@ -87,14 +87,36 @@ export function trackListingInterest(listing: AppListing, weight = 2) {
   })
 }
 
-export function rankListingsForUser(listings: AppListing[]) {
+export function getTopInterestCategories(limit = 3): string[] {
+  const profile = readPreferenceProfile()
+  return Object.entries(profile.categories)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([slug]) => slug)
+}
+
+type RankOptions = {
+  /** Город из шапки — бонус объявлениям в этом городе */
+  preferredCity?: string
+}
+
+export function rankListingsForUser(listings: AppListing[], options?: RankOptions) {
   const profile = readPreferenceProfile()
   const searchTerms = profile.searches.flatMap((query) => query.split(/\s+/)).filter((term) => term.length > 2)
 
-  return [...listings].sort((a, b) => scoreListing(b, profile, searchTerms) - scoreListing(a, profile, searchTerms))
+  return [...listings].sort(
+    (a, b) =>
+      scoreListing(b, profile, searchTerms, options?.preferredCity) -
+      scoreListing(a, profile, searchTerms, options?.preferredCity),
+  )
 }
 
-function scoreListing(listing: AppListing, profile: PreferenceProfile, searchTerms: string[]) {
+function scoreListing(
+  listing: AppListing,
+  profile: PreferenceProfile,
+  searchTerms: string[],
+  preferredCity?: string,
+) {
   const slug = categorySlug(listing)
   const title = listing.title.toLowerCase()
   const description = listing.description?.toLowerCase() ?? ""
@@ -110,6 +132,12 @@ function scoreListing(listing: AppListing, profile: PreferenceProfile, searchTer
   for (const term of searchTerms) {
     if (title.includes(term)) score += 5
     if (description.includes(term)) score += 2
+  }
+
+  if (preferredCity?.trim() && listing.city?.trim()) {
+    if (listing.city.trim().toLowerCase() === preferredCity.trim().toLowerCase()) {
+      score += 15
+    }
   }
 
   return score

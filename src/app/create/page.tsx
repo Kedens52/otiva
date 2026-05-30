@@ -1,7 +1,11 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { PAGE_CONTAINER_CLASS } from "@/components/layout/PageContainer"
+import { LegalConsentNotice } from "@/components/legal/LegalConsentNotice"
+import { MarketPricePanel } from "@/components/marketplace/MarketPricePanel"
+import { getStoredCity, isCityFilterActive, NASHLO_CITIES_FOR_LISTING } from "@/lib/city-selection"
 
 // ── Category definitions with their specific fields ──────────────────────────
 
@@ -655,13 +659,6 @@ const CATEGORY_EXTRA_FIELDS: Record<string, FieldDef[]> = {
   ],
 }
 
-const CITIES = [
-  "Москва","Санкт-Петербург","Казань","Екатеринбург","Новосибирск",
-  "Сочи","Краснодар","Нижний Новгород","Самара","Ростов-на-Дону",
-  "Уфа","Воронеж","Пермь","Тюмень","Омск","Красноярск","Волгоград",
-  "Иркутск","Хабаровск","Владивосток","Ставрополь","Тула","Калининград",
-]
-
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function CreatePage() {
@@ -676,6 +673,14 @@ export default function CreatePage() {
   const [uploading, setUploading] = useState(false)
   const [geocoding, setGeocoding] = useState(false)
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [priceAnomalyReason, setPriceAnomalyReason] = useState("")
+
+  useEffect(() => {
+    const stored = getStoredCity()
+    if (isCityFilterActive(stored)) {
+      setForm((f) => (f.city ? f : { ...f, city: stored }))
+    }
+  }, [])
   const photoInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
   const geocodeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -768,6 +773,7 @@ export default function CreatePage() {
     if (video) payload.video = video
     if (form.address.trim()) payload.location = form.address.trim()
     if (coords) { payload.lat = coords.lat; payload.lng = coords.lng }
+    if (priceAnomalyReason.trim()) payload.priceAnomalyReason = priceAnomalyReason.trim()
 
     try {
       const res = await fetch("/api/listings", {
@@ -786,18 +792,25 @@ export default function CreatePage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10 pb-28 lg:pb-10">
-      <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">Разместить объявление</h1>
-      <p className="mt-1 text-sm text-zinc-500">Заполните форму — объявление появится сразу после публикации</p>
+    <main className={`${PAGE_CONTAINER_CLASS} max-w-[860px] py-6 pb-8 lg:py-8 lg:pb-10`}>
+      <section className="rounded-2xl border border-white/80 bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.05)] sm:p-6">
+        <span className="inline-flex rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-[hsl(var(--nashlo-orange))]">
+          Новое объявление
+        </span>
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-950 sm:text-3xl">Разместить объявление</h1>
+        <p className="mt-2 text-sm text-zinc-500">
+          Заполните форму по шагам: сначала категория и заголовок, затем описание, цена и контакты.
+        </p>
+      </section>
 
-      <form onSubmit={submit} className="mt-8 space-y-6">
+      <form onSubmit={submit} className="mt-5 space-y-6 rounded-2xl border border-white/80 bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.05)] sm:p-6">
 
         {/* ── Category picker ─────────────────────────────────────────────── */}
         <div>
           <label className="block text-sm font-medium text-zinc-700 mb-3">
             Категория <span className="text-red-500">*</span>
           </label>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             {CATEGORIES.map((c) => (
               <button
                 key={c.id}
@@ -919,7 +932,7 @@ export default function CreatePage() {
                           onClick={() => updateExtra(def.key, o.value)}
                           className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
                             extraFields[def.key] === o.value
-                              ? "border-zinc-950 bg-zinc-950 text-white"
+                              ? "border-[hsl(var(--nashlo-orange))] bg-[hsl(var(--nashlo-orange))] text-white"
                               : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300"
                           }`}
                         >
@@ -976,6 +989,15 @@ export default function CreatePage() {
               />
               Бесплатно / Отдам даром
             </label>
+            <MarketPricePanel
+              categorySlug={category}
+              price={form.free ? 0 : Number(form.price) || 0}
+              city={form.city}
+              attributes={{ condition: form.condition, ...extraFields }}
+              disabled={form.free || !category}
+              reason={priceAnomalyReason}
+              onReasonChange={setPriceAnomalyReason}
+            />
           </div>
 
           {category !== "services" && category !== "real-estate" && (
@@ -988,7 +1010,7 @@ export default function CreatePage() {
                     onClick={() => update("condition", c.id)}
                     className={`flex-1 rounded-2xl border py-3 text-sm font-medium transition ${
                       form.condition === c.id
-                        ? "border-zinc-950 bg-zinc-950 text-white"
+                        ? "border-[hsl(var(--nashlo-orange))] bg-[hsl(var(--nashlo-orange))] text-white"
                         : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-zinc-300"
                     }`}
                   >
@@ -1012,7 +1034,7 @@ export default function CreatePage() {
               className="mt-1.5 h-12 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))] focus:bg-white"
             >
               <option value="">Выберите город</option>
-              {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {NASHLO_CITIES_FOR_LISTING.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div>
@@ -1118,18 +1140,17 @@ export default function CreatePage() {
           <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
         )}
 
-        <button
-          type="submit"
-          disabled={loading || uploading}
-          className="h-12 w-full rounded-2xl bg-[hsl(var(--nashlo-orange))] text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-        >
-          {uploading ? "Загружаем фото..." : loading ? "Публикуем..." : "Опубликовать объявление"}
-        </button>
+        <div className="sticky bottom-0 z-20 -mx-4 border-t border-zinc-200/80 bg-[#F5F6F8]/95 px-4 py-3 backdrop-blur sm:-mx-5 sm:px-5 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0">
+          <button
+            type="submit"
+            disabled={loading || uploading}
+            className="h-12 w-full rounded-xl bg-[hsl(var(--nashlo-orange))] text-sm font-semibold text-white transition hover:bg-[hsl(var(--nashlo-orange)/0.92)] disabled:opacity-50"
+          >
+            {uploading ? "Загружаем фото..." : loading ? "Публикуем..." : "Опубликовать объявление"}
+          </button>
+        </div>
 
-        <p className="text-center text-xs text-zinc-400">
-          Нажимая кнопку, вы соглашаетесь с{" "}
-          <a href="/terms" className="underline hover:text-zinc-700">условиями использования</a>
-        </p>
+        <LegalConsentNotice variant="listing" className="text-center" />
       </form>
     </main>
   )

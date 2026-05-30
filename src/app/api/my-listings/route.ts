@@ -14,6 +14,9 @@ export async function GET() {
       select: {
         id: true, title: true, price: true, city: true,
         status: true, createdAt: true, images: true, views: true,
+        uniqueViews: true, rejectionReason: true, autoApproved: true,
+        isPromoted: true, promotedUntil: true,
+        moderationReasonCode: true, returnedForRevision: true,
         category: { select: { slug: true, nameRu: true } },
         _count: { select: { favorites: true } },
       },

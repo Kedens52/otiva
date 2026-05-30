@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { z } from 'zod'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
@@ -60,3 +62,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
   }
 }
+

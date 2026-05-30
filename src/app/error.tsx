@@ -11,7 +11,7 @@ export default function Error({ error, reset }: { error: Error; reset: () => voi
       <p className="mt-2 text-sm text-zinc-500">Произошла ошибка. Попробуйте обновить страницу.</p>
       <div className="mt-8 flex gap-3">
         <button onClick={reset}
-          className="rounded-2xl bg-zinc-950 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800 transition">
+          className="rounded-xl bg-[hsl(var(--nashlo-orange))] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[hsl(var(--nashlo-orange)/0.92)]">
           Попробовать снова
         </button>
         <a href="/" className="rounded-2xl border border-zinc-200 px-6 py-3 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition">

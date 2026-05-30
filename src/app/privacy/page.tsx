@@ -1,10 +1,11 @@
 import Link from "next/link"
+import { LegalStandaloneShell } from "@/components/legal/LegalStandaloneShell"
 
 export const metadata = { title: "Политика конфиденциальности — Нашло" }
 
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12 pb-28 lg:pb-12">
+    <LegalStandaloneShell>
       <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">Политика конфиденциальности</h1>
       <p className="mt-2 text-sm text-zinc-500">Редакция от 1 января 2025 г. Действует в соответствии с Федеральным законом от 27.07.2006 № 152-ФЗ «О персональных данных».</p>
       <div className="mt-8 space-y-8 text-sm leading-7 text-zinc-700">
@@ -54,6 +55,6 @@ export default function PrivacyPage() {
         <Link href="/personal-data" className="underline underline-offset-2 hover:text-zinc-700">Персональные данные</Link>
         <Link href="/cookies" className="underline underline-offset-2 hover:text-zinc-700">Cookies</Link>
       </div>
-    </main>
+    </LegalStandaloneShell>
   )
 }

@@ -2,10 +2,15 @@
 
 import Link from "next/link"
 import { ChangeEvent, useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { adSlots, loadManagedAds, saveManagedAds, type ManagedAd } from "@/lib/ad-store"
-
-const ADVERTISER_EMAIL_KEY = "nashlo-advertiser-email"
-const ADVERTISER_NAME_KEY = "nashlo-advertiser-name"
+import { PAGE_CONTAINER_WIDE_CLASS } from "@/components/layout/PageContainer"
+import {
+  ADVERTISER_EMAIL_KEY,
+  ADVERTISER_NAME_KEY,
+  ADVERTISING_PREVIEW_EMAIL,
+  prepareAdvertisingPreview,
+} from "@/lib/advertising-preview"
 
 const statusLabels: Record<NonNullable<ManagedAd["status"]>, string> = {
   draft: "Черновик",
@@ -35,6 +40,7 @@ function getStats(ad: ManagedAd) {
 }
 
 export default function AdvertiserCabinetPage() {
+  const router = useRouter()
   const [ads, setAds] = useState<ManagedAd[]>([])
   const [email, setEmail] = useState("")
   const [loginEmail, setLoginEmail] = useState("")
@@ -118,7 +124,7 @@ export default function AdvertiserCabinetPage() {
     if (!file) return
 
     if (file.size > 900_000) {
-      setMessage("Файл слишком большой. Для демо используйте изображение до 900 КБ.")
+      setMessage("Файл слишком большой. Используйте изображение до 900 КБ.")
       return
     }
 
@@ -126,6 +132,8 @@ export default function AdvertiserCabinetPage() {
     reader.onload = () => updateCampaign(ad.id, { image: String(reader.result), status: "draft", active: false }, "Изображение загружено. Отправьте креатив на модерацию.")
     reader.readAsDataURL(file)
   }
+
+  const isPreview = email.toLowerCase() === ADVERTISING_PREVIEW_EMAIL
 
   if (!email) {
     return (
@@ -135,7 +143,7 @@ export default function AdvertiserCabinetPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[hsl(var(--nashlo-orange))]">Кабинет рекламодателя</p>
             <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-tight text-zinc-950 sm:text-6xl">Управление рекламой отдельно от профиля</h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-zinc-500">
-              Войдите по email из заявки. Здесь рекламодатель загружает креатив, смотрит статус модерации и статистику. Запуск показов остается у администратора.
+              Раздел в разработке. Войдите по email из будущей заявки или откройте кабинет для ознакомления с интерфейсом.
             </p>
           </div>
 
@@ -155,8 +163,18 @@ export default function AdvertiserCabinetPage() {
             <button onClick={login} className="mt-4 w-full rounded-2xl bg-[hsl(var(--nashlo-orange))] px-5 py-3 text-sm font-semibold text-white">
               Открыть кабинет
             </button>
-            <Link href="/advertising" className="mt-3 block rounded-2xl bg-white px-5 py-3 text-center text-sm font-semibold text-zinc-950">
-              Отправить новую заявку
+            <button
+              type="button"
+              onClick={() => {
+                prepareAdvertisingPreview()
+                router.push("/ad-cabinet")
+              }}
+              className="mt-3 w-full rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-50"
+            >
+              Ознакомиться с интерфейсом
+            </button>
+            <Link href="/advertising" className="mt-3 block rounded-2xl bg-zinc-100 px-5 py-3 text-center text-sm font-semibold text-zinc-700">
+              О рекламе на Нашло
             </Link>
           </div>
         </section>
@@ -165,19 +183,34 @@ export default function AdvertiserCabinetPage() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 pb-28 lg:py-10">
+    <main className={`${PAGE_CONTAINER_WIDE_CLASS} py-6 pb-28 lg:py-10`}>
+      {isPreview && (
+        <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+          <span className="font-semibold">Раздел в разработке.</span>{" "}
+          Вы смотрите интерфейс для ознакомления — тарифы, оплата и реальные показы появятся позже.{" "}
+          <Link href="/advertising" className="font-semibold text-[hsl(var(--nashlo-orange))] hover:underline">
+            Оставить пожелание
+          </Link>
+        </div>
+      )}
+
       <section className="rounded-[32px] bg-zinc-950 p-6 text-white shadow-2xl shadow-zinc-950/15 sm:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[hsl(var(--nashlo-orange))]">Кабинет рекламодателя</p>
+            {isPreview && (
+              <span className="mt-2 inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
+                В разработке · ознакомление
+              </span>
+            )}
             <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">{name}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">
-              {email}. Загружайте материалы, отправляйте их на модерацию и следите за запуском рекламных мест.
+              {email}. Загружайте материалы, отправляйте на модерацию и следите за статистикой — после запуска раздела.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/advertising" className="rounded-2xl bg-[hsl(var(--nashlo-orange))] px-5 py-3 text-sm font-semibold text-white">
-              Новая заявка
+              О рекламе
             </Link>
             <button onClick={logout} className="rounded-2xl bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/15">
               Выйти
@@ -192,9 +225,11 @@ export default function AdvertiserCabinetPage() {
         <section className="mt-6 rounded-[28px] border border-zinc-200 bg-white px-5 py-16 text-center shadow-sm">
           <p className="text-4xl">↗</p>
           <h2 className="mt-4 text-2xl font-semibold text-zinc-950">Заявок для этого email пока нет</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">Сначала отправьте заявку на рекламу. После этого она появится здесь как кампания на модерации.</p>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
+            Откройте раздел рекламы, чтобы ознакомиться с кабинетом или оставить пожелания по доработке.
+          </p>
           <Link href="/advertising" className="mt-5 inline-flex rounded-2xl bg-[hsl(var(--nashlo-orange))] px-5 py-3 text-sm font-semibold text-white">
-            Отправить заявку
+            Перейти к рекламе
           </Link>
         </section>
       ) : (
@@ -252,7 +287,7 @@ export default function AdvertiserCabinetPage() {
 
                 <aside className="rounded-3xl bg-zinc-50 p-4">
                   <h2 className="font-semibold text-zinc-950">Запуск и статистика</h2>
-                  <div className="mt-4 grid grid-cols-3 gap-2 lg:grid-cols-1">
+                  <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1">
                     <div className="rounded-2xl bg-white p-3">
                       <p className="text-xs text-zinc-400">Показы</p>
                       <p className="mt-1 text-xl font-semibold text-zinc-950">{stats.views.toLocaleString("ru-RU")}</p>

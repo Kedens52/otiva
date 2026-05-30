@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { ListingCard } from "@/components/marketplace/ListingCard"
+import { PAGE_CONTAINER_WIDE_CLASS } from "@/components/layout/PageContainer"
 import type { AppListing } from "@/lib/listing-types"
 
 type Seller = {
@@ -21,18 +22,18 @@ export default function SellerPage({ params }: { params: { name: string } }) {
       .catch(() => setLoading(false))
   }, [params.name])
 
-  if (loading) return <div className="mx-auto max-w-7xl px-4 py-20 text-center text-sm text-zinc-400">Загрузка…</div>
+  if (loading) return <div className={`${PAGE_CONTAINER_WIDE_CLASS} py-20 text-center text-sm text-zinc-400`}>Загрузка…</div>
   if (!seller) return (
-    <div className="mx-auto max-w-7xl px-4 py-20 text-center">
+    <div className={`${PAGE_CONTAINER_WIDE_CLASS} py-20 text-center`}>
       <p className="text-xl font-semibold text-zinc-950">Продавец не найден</p>
     </div>
   )
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <main className={`${PAGE_CONTAINER_WIDE_CLASS} py-8`}>
       <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-950 text-2xl font-semibold text-white">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[hsl(var(--nashlo-orange))] text-2xl font-semibold text-white">
             {(seller.name ?? "П")[0]}
           </div>
           <div>

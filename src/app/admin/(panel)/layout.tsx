@@ -35,14 +35,14 @@ export default async function AdminPanelLayout({ children }: { children: React.R
   const permissions = expandPermissions(ctx.staff.role)
 
   return (
-    <div className="flex min-h-screen bg-gray-950">
+    <div className="flex min-h-screen bg-zinc-100">
       <AdminSidebar
         displayName={ctx.staff.displayName}
         login={ctx.staff.login}
         role={ctx.staff.role}
         permissions={permissions}
       />
-      <main className="flex-1 min-w-0 overflow-auto">
+      <main className="min-h-screen min-w-0 flex-1 overflow-auto bg-zinc-50 pt-[calc(env(safe-area-inset-top)+4rem)] lg:pt-0">
         {children}
       </main>
     </div>

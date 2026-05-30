@@ -1,14 +1,6 @@
-import { MetadataRoute } from "next"
+import type { MetadataRoute } from "next"
+import { buildRobotsConfig } from "@/lib/seo/robots-txt"
 
 export default function robots(): MetadataRoute.Robots {
-  return {
-    rules: [
-      {
-        userAgent: "*",
-        allow: "/",
-        disallow: ["/admin", "/api/", "/profile/settings", "/create", "/favorites", "/chat"],
-      },
-    ],
-    sitemap: "https://nashlo.ru/sitemap.xml",
-  }
+  return buildRobotsConfig()
 }

@@ -1,117 +1,134 @@
 ﻿"use client"
 
-import { useRouter, useSearchParams } from "next/navigation"
-import { useState } from "react"
-import { Logo } from "@/components/layout/Logo"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { getAdminCsrfFromDocument } from "@/lib/admin/csrf-client"
 import { safeAdminRedirectPath } from "@/lib/admin/safe-redirect"
+import { Logo } from "@/components/layout/Logo"
+import styles from "./admin-login.module.css"
 
 export default function AdminLoginClient() {
   const router = useRouter()
-  const searchParams = useSearchParams()
+  const [nextPath, setNextPath] = useState<string | null>(null)
   const [login, setLogin] = useState("")
   const [code, setCode] = useState("")
+  const [showCode, setShowCode] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  async function submit() {
+  useEffect(() => {
+    const next = new URLSearchParams(window.location.search).get("next")
+    setNextPath(next)
+  }, [])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
     setError("")
     setLoading(true)
 
-    const response = await fetch("/api/admin/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        login,
-        code,
-        next: searchParams.get("next") || undefined,
-      }),
-    })
+    try {
+      const res = await fetch("/api/admin/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": getAdminCsrfFromDocument(),
+        },
+        body: JSON.stringify({
+          login: login.trim(),
+          code: code.trim(),
+          next: nextPath || undefined,
+        }),
+      })
 
-    setLoading(false)
+      const data = await res.json().catch(() => ({}))
 
-    if (!response.ok) {
-      const data = await response.json().catch(() => null)
-      setError(data?.error || "Доступ запрещен")
-      return
+      if (!res.ok) {
+        setError(data.error ?? "Ошибка входа")
+        return
+      }
+
+      const target = safeAdminRedirectPath(
+        typeof data.redirectTo === "string" ? data.redirectTo : null,
+        safeAdminRedirectPath(nextPath, "/admin/dashboard"),
+      )
+      router.push(target)
+      router.refresh()
+    } catch {
+      setError("Нет соединения с сервером")
+    } finally {
+      setLoading(false)
     }
-
-    const data = await response.json().catch(() => null)
-    const target = safeAdminRedirectPath(
-      typeof data?.redirectTo === "string" ? data.redirectTo : null,
-      safeAdminRedirectPath(searchParams.get("next"), "/admin/dashboard"),
-    )
-    router.push(target)
-    router.refresh()
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-white px-4 py-10">
-      <section className="w-full max-w-md rounded-[32px] border border-zinc-200 bg-zinc-50 p-5 shadow-inner">
-        <div className="rounded-[28px] bg-white p-6 shadow-sm">
-          <div className="flex justify-center">
-            <Logo />
+    <main className={styles.page}>
+      <div className={styles.inner}>
+        <div className={styles.brand}>
+          <div className={styles.brandMark}>
+            <Logo size="default" />
+            <span className={styles.brandBadge}>admin</span>
           </div>
-          <h1 className="mt-8 text-3xl font-semibold tracking-tight text-zinc-950">
-            Вход в админ-панель
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-zinc-500">
-            Введите логин сотрудника и персональный код доступа.
-          </p>
+          <h1 className={styles.title}>Панель управления</h1>
+          <p className={styles.subtitle}>Закрытый вход для сотрудников Нашло</p>
+        </div>
 
-          <label className="mt-6 block">
-            <span className="text-sm font-medium text-zinc-600">Логин</span>
+        <form className={styles.form} onSubmit={handleSubmit}>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="admin-login">
+              Логин
+            </label>
             <input
+              id="admin-login"
+              className={styles.input}
+              type="text"
               value={login}
-              onChange={(event) => {
-                setLogin(event.target.value)
-                setError("")
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") submit()
-              }}
-              className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))]"
-              placeholder="Например: owner"
+              onChange={(e) => setLogin(e.target.value)}
+              autoComplete="username"
               autoFocus
+              required
+              placeholder="your.login"
             />
-          </label>
+          </div>
 
-          <label className="mt-6 block">
-            <span className="text-sm font-medium text-zinc-600">Код доступа</span>
-            <input
-              value={code}
-              onChange={(event) => {
-                setCode(event.target.value)
-                setError("")
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") submit()
-              }}
-              className="mt-2 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-[hsl(var(--nashlo-orange))]"
-              placeholder="Введите код"
-              type="password"
-            />
-          </label>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="admin-code">
+              Персональный код
+            </label>
+            <div className={styles.codeWrap}>
+              <input
+                id="admin-code"
+                className={`${styles.input} ${styles.inputCode}`}
+                type={showCode ? "text" : "password"}
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                autoComplete="current-password"
+                required
+                placeholder="NSH-XXXX-XXXX"
+              />
+              <button
+                type="button"
+                className={styles.toggleCode}
+                onClick={() => setShowCode((v) => !v)}
+                tabIndex={-1}
+              >
+                {showCode ? "Скрыть" : "Показать"}
+              </button>
+            </div>
+          </div>
+
+          {error ? <div className={styles.error}>{error}</div> : null}
 
           <button
-            type="button"
-            onClick={submit}
-            disabled={loading || code.trim().length === 0 || login.trim().length === 0}
-            className="mt-4 h-12 w-full rounded-2xl bg-[hsl(var(--nashlo-orange))] px-5 text-sm font-semibold text-white transition hover:bg-[hsl(var(--nashlo-orange)/0.9)] disabled:cursor-not-allowed disabled:opacity-50"
+            type="submit"
+            className={styles.submit}
+            disabled={loading || !login.trim() || !code.trim()}
           >
-            {loading ? "Проверяем..." : "Открыть админ-панель"}
+            {loading ? "Входим…" : "Войти"}
           </button>
+        </form>
 
-          {error && (
-            <p className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">
-              {error}
-            </p>
-          )}
-
-          <p className="mt-5 text-xs leading-5 text-zinc-400">
-            Вход доступен только активным сотрудникам с назначенной ролью.
-          </p>
-        </div>
-      </section>
+        <p className={styles.footer}>Доступ только для сотрудников nashlo.ru</p>
+      </div>
     </main>
   )
 }

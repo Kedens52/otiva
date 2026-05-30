@@ -29,7 +29,7 @@ export function InstallAppBanner() {
             Нашло на экране айфона
           </h2>
           <ol className="mt-2 grid gap-1.5 text-xs leading-5 text-zinc-600 sm:mt-3 sm:text-sm">
-            <li><span className="font-semibold text-zinc-950">1. </span>Откройте <Link href="/feed" className="font-semibold text-[hsl(var(--nashlo-blue))]">nashlo.ru</Link> в Safari.</li>
+            <li><span className="font-semibold text-zinc-950">1. </span>Откройте <Link href="/" className="font-semibold text-[hsl(var(--nashlo-blue))]">nashlo.ru</Link> в Safari.</li>
             <li><span className="font-semibold text-zinc-950">2. </span>Нажмите «Поделиться» и выберите «На экран Домой».</li>
           </ol>
           <p className="mt-2 text-xs text-zinc-400 sm:mt-3">Быстрый доступ без установки из магазина.</p>

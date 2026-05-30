@@ -4,14 +4,28 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && node scripts/export-robots-config.js && node scripts/sync-robots-txt.js && node scripts/sync-indexnow-key.js && next build",
+    "sync:robots": "node scripts/export-robots-config.js && node scripts/sync-robots-txt.js",
+    "sync:indexnow": "node scripts/sync-indexnow-key.js",
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
+    "check:site-url:prod": "node scripts/check-production-site-url.js",
+    "check:seo:prod": "node scripts/check-production-seo.js",
+    "check:auth:prod": "node scripts/check-production-auth.js",
+    "check:auth-payment-env": "node scripts/check-auth-payment-env.js",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "db:recover-migrations": "node scripts/recover-failed-migrations.js",
+    "db:badges": "node scripts/ensure-badge-catalog.js",
+    "db:badges:icons": "node scripts/update-badge-icons.js",
+    "admin:create-owner": "tsx scripts/create-owner.ts",
+    "db:backfill-slugs": "tsx scripts/backfill-listing-slugs.ts",
+    "db:seed-want-to-buy": "tsx prisma/seed.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@prisma/client": "^5.10.2",
@@ -41,6 +55,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "date-fns": "^3.3.1",
+    "ioredis": "^5.4.2",
     "jose": "^5.2.2",
     "lucide-react": "^0.323.0",
     "next": "14.1.0",
@@ -49,6 +64,7 @@
     "react-hook-form": "^7.50.1",
     "tailwind-merge": "^2.2.1",
     "tailwindcss-animate": "^1.0.7",
+    "web-push": "^3.6.7",
     "zod": "^3.22.4",
     "zustand": "^4.5.0"
   },
@@ -63,6 +79,7 @@
     "postcss": "^8",
     "prisma": "^5.10.2",
     "tailwindcss": "^3.3.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.0.5"
   }
 }

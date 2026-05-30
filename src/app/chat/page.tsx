@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ChatFraudHint } from "@/components/marketplace/ChatFraudHint"
+import { SupportChat } from "@/components/support/SupportChat"
 
 type ConvMember = {
   userId: string
@@ -38,18 +39,6 @@ type ConversationDetail = {
   listing: { id: string; title: string; price: number; images: string[]; status: string } | null
   members: ConvMember[]
   messages: ChatMessage[]
-}
-
-type SupportMessage = {
-  id: string
-  text: string
-  createdAt: string
-  sender: { id: string; name: string | null; avatar: string | null; role: string }
-}
-
-type SupportConversation = {
-  id: string
-  messages: SupportMessage[]
 }
 
 function timeLabel(ts: string): string {
@@ -102,13 +91,12 @@ export default function ChatPage() {
   const [filter, setFilter] = useState<Filter>("all")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selected, setSelected] = useState<ConversationDetail | null>(null)
-  const [support, setSupport] = useState<SupportConversation | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
-  const [supportLoading, setSupportLoading] = useState(false)
   const [messageText, setMessageText] = useState("")
   const [sending, setSending] = useState(false)
   const [panelMode, setPanelMode] = useState<"empty" | "conversation" | "support">("empty")
   const bottomRef = useRef<HTMLDivElement>(null)
+  const messagesScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     async function load() {
@@ -157,7 +145,7 @@ export default function ChatPage() {
     { id: "all", label: "Все" },
     { id: "unread", label: "Новые", count: totalUnread },
     { id: "sales", label: "Покупатели" },
-    { id: "buying", label: "Мои запросы" },
+    { id: "buying", label: "Мои" },
   ]
 
   useEffect(() => {
@@ -184,58 +172,32 @@ export default function ChatPage() {
   }, [selectedId, panelMode])
 
   useEffect(() => {
-    if (panelMode !== "support") return
-    let cancelled = false
-
-    async function loadSupport() {
-      setSupportLoading(true)
-      const res = await fetch("/api/support")
-      if (cancelled) return
-      if (res.ok) {
-        const data = await res.json()
-        setSupport(data.conversation ?? null)
-      }
-      setSupportLoading(false)
-    }
-
-    loadSupport()
-    const timer = window.setInterval(loadSupport, 5000)
-    return () => {
-      cancelled = true
-      window.clearInterval(timer)
-    }
-  }, [panelMode])
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
-  }, [selected?.messages.length, support?.messages.length])
+    const el = messagesScrollRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
+  }, [selected?.messages.length, panelMode])
 
   async function sendMessage() {
     const trimmed = messageText.trim()
-    if ((panelMode === "conversation" && !selectedId) || !trimmed || sending) return
+    if (panelMode !== "conversation" || !selectedId || !trimmed || sending) return
 
     setSending(true)
     setMessageText("")
 
     try {
-      const res = await fetch(panelMode === "support" ? "/api/support" : `/api/messages/${selectedId}`, {
+      const res = await fetch(`/api/messages/${selectedId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: trimmed }),
       })
       if (res.ok) {
         const data = await res.json()
-        if (panelMode === "support") {
-          // POST /api/support returns { conversation }, not { message } like /api/messages/[id]
-          if (data.conversation) setSupport(data.conversation)
-        } else {
-          setSelected((current) => current ? { ...current, messages: [...current.messages, data.message] } : current)
-          setConvs((current) => current.map((conv) => (
-            conv.id === selectedId
-              ? { ...conv, updatedAt: data.message.createdAt, lastMessage: data.message, unreadCount: 0 }
-              : conv
-          )))
-        }
+        setSelected((current) => current ? { ...current, messages: [...current.messages, data.message] } : current)
+        setConvs((current) => current.map((conv) => (
+          conv.id === selectedId
+            ? { ...conv, updatedAt: data.message.createdAt, lastMessage: data.message, unreadCount: 0 }
+            : conv
+        )))
       } else {
         setMessageText(trimmed)
       }
@@ -259,24 +221,24 @@ export default function ChatPage() {
   const selectedName = selectedOther?.name ?? "Пользователь"
 
   return (
-    <main className="min-h-[100dvh] bg-[#f6f6f7] text-zinc-950 lg:min-h-0 lg:bg-white">
-      <div className="mx-auto grid min-h-[100dvh] max-w-6xl lg:min-h-0 lg:grid-cols-[360px_1fr] lg:gap-6 lg:px-6 lg:py-8">
-        <aside className="flex min-h-[100dvh] flex-col bg-white lg:min-h-[760px] lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-zinc-200 lg:shadow-sm">
-          <header className="sticky top-0 z-20 border-b border-zinc-100 bg-white/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.9rem)] backdrop-blur lg:static lg:px-5 lg:pb-4 lg:pt-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[hsl(var(--nashlo-orange))]">Нашло</p>
-                <h1 className="mt-1 text-3xl font-semibold tracking-tight text-zinc-950 lg:text-[32px]">Сообщения</h1>
-              </div>
-              {totalUnread > 0 && (
-                <span className="flex h-9 min-w-9 items-center justify-center rounded-full bg-[hsl(var(--nashlo-orange))] px-3 text-sm font-bold text-white shadow-sm">
-                  {totalUnread}
-                </span>
-              )}
-            </div>
+    <main className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-white lg:rounded-2xl lg:border lg:border-zinc-200 lg:shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+      <div className="grid h-full min-h-0 w-full flex-1 lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]">
+        <aside className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden border-zinc-200 bg-white lg:border-r">
+          <header className="shrink-0 border-b border-zinc-100 bg-white px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] lg:static lg:px-5 lg:pb-4 lg:pt-5">
+            <h1 className="text-[22px] font-bold leading-tight tracking-tight text-zinc-950 lg:text-2xl">Сообщения</h1>
+            <p className="mt-0.5 hidden text-sm text-zinc-500 lg:block">Личная переписка по обычным объявлениям</p>
+            <p className="mt-2 hidden text-xs text-zinc-500 lg:block">
+              <Link href="/business/chats" className="font-semibold text-[hsl(var(--nashlo-orange))] underline">
+                Переписка с компаниями (B2B)
+              </Link>
+              {" · "}
+              <Link href="/business/dashboard/messages" className="underline">
+                бизнес-кабинет
+              </Link>
+            </p>
 
-            <div className="mt-4 flex h-12 items-center gap-2 rounded-[18px] border border-zinc-200 bg-zinc-50 px-3">
-              <svg className="h-5 w-5 shrink-0 text-zinc-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <div className="mt-4 flex h-11 items-center gap-2.5 rounded-full bg-[#F2F2F2] px-4">
+              <svg className="h-[18px] w-[18px] shrink-0 text-zinc-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="m21 21-4.35-4.35M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
               <input
@@ -285,28 +247,33 @@ export default function ChatPage() {
                 placeholder="Поиск по чатам"
                 className="min-w-0 flex-1 bg-transparent text-[15px] text-zinc-950 outline-none placeholder:text-zinc-400"
               />
-              {query && (
-                <button type="button" onClick={() => setQuery("")} className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-zinc-400 hover:text-zinc-700" aria-label="Очистить поиск">
+              {query ? (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400"
+                  aria-label="Очистить поиск"
+                >
                   ×
                 </button>
-              )}
+              ) : null}
             </div>
 
-            <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 lg:-mx-5 lg:px-5">
+            <div className="-mx-4 mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:-mx-5 lg:px-5 [&::-webkit-scrollbar]:hidden">
               {filters.map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => setFilter(item.id)}
-                  className={`flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold transition ${
+                  className={`flex h-9 shrink-0 snap-start items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold transition ${
                     filter === item.id
-                      ? "bg-zinc-950 text-white"
-                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-950"
+                      ? "bg-[#FF4F12] text-white"
+                      : "bg-[#F2F2F2] text-zinc-700"
                   }`}
                 >
                   {item.label}
                   {!!item.count && (
-                    <span className={`rounded-full px-1.5 text-xs ${filter === item.id ? "bg-white/20 text-white" : "bg-white text-zinc-500"}`}>
+                    <span className={`rounded-full px-1.5 text-[11px] ${filter === item.id ? "bg-white/20 text-white" : "bg-white text-zinc-500"}`}>
                       {item.count}
                     </span>
                   )}
@@ -315,19 +282,26 @@ export default function ChatPage() {
             </div>
           </header>
 
-          <section className="min-h-0 flex-1 overflow-y-auto px-3 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-3 lg:pb-4">
-            <Link href="/support" className="mb-3 flex items-center gap-3 rounded-[22px] border border-orange-100 bg-orange-50 px-4 py-4 transition hover:bg-orange-100 lg:hidden">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-[hsl(var(--nashlo-orange))] text-lg font-bold text-white">
+          <section className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-2 lg:px-3 lg:pb-4">
+            <Link
+              href="/support"
+              className="mb-3 flex items-center gap-3 rounded-2xl bg-[#FFF6F0] px-4 py-3.5 transition active:bg-[#FFEDE3] lg:hidden"
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FF4F12] text-lg font-bold text-white">
                 ?
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="truncate font-semibold text-zinc-950">Поддержка Нашло</p>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-[hsl(var(--nashlo-orange))]">важно</span>
+                  <p className="truncate text-[15px] font-semibold text-zinc-950">Поддержка Нашло</p>
+                  <span className="rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#FF4F12]">
+                    важно
+                  </span>
                 </div>
-                <p className="mt-0.5 truncate text-sm text-zinc-500">Поможем с объявлениями, оплатой и безопасностью</p>
+                <p className="mt-0.5 truncate text-sm text-zinc-500">
+                  Поможем с объявлениями, оплатой и безопасностью
+                </p>
               </div>
-              <span className="text-xl text-[hsl(var(--nashlo-orange))]">›</span>
+              <span className="text-lg text-zinc-300">›</span>
             </Link>
             <button
               type="button"
@@ -356,23 +330,36 @@ export default function ChatPage() {
 
             {loading ? (
               <div className="space-y-2">
-                {[1, 2, 3, 4].map((item) => (
-                  <div key={item} className="h-[86px] animate-pulse rounded-[22px] bg-zinc-100" />
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="h-20 animate-pulse rounded-2xl bg-zinc-100" />
                 ))}
               </div>
             ) : filtered.length === 0 ? (
-              <div className="flex min-h-[48dvh] flex-col items-center justify-center px-6 text-center">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[hsl(var(--nashlo-orange)/0.10)]">
-                  <svg className="h-9 w-9 text-[hsl(var(--nashlo-orange))]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <div className="flex min-h-[52dvh] flex-col items-center justify-center px-2 text-center">
+                <div className="flex h-[88px] w-[88px] items-center justify-center rounded-full border-2 border-[#FF4F12]/15 bg-[#FFF0E8]">
+                  <svg className="h-9 w-9 text-[#FF4F12]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7A8.38 8.38 0 0 1 4 11.5a8.5 8.5 0 1 1 17 0Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
-                <p className="mt-4 text-lg font-semibold">{query ? "Ничего не найдено" : "Пока нет чатов"}</p>
-                <p className="mt-1 max-w-xs text-sm leading-6 text-zinc-500">Напишите продавцу из карточки объявления, и диалог появится здесь.</p>
-                <Link href="/search" className="mt-5 rounded-2xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white">Перейти к объявлениям</Link>
+                <p className="mt-5 text-[17px] font-bold text-zinc-950">
+                  {query || filter !== "all" ? "Ничего не найдено" : "Пока нет чатов"}
+                </p>
+                <p className="mt-2 max-w-[280px] text-sm leading-6 text-zinc-500">
+                  {query || filter !== "all"
+                    ? "Попробуйте изменить фильтр или запрос."
+                    : "Напишите продавцу из карточки объявления, и диалог появится здесь."}
+                </p>
+                {!query && filter === "all" ? (
+                  <Link
+                    href="/"
+                    className="mt-6 flex h-12 w-full max-w-[320px] items-center justify-center rounded-2xl bg-[#FF4F12] text-[15px] font-semibold text-white transition active:bg-[#E8470F]"
+                  >
+                    Перейти к объявлениям
+                  </Link>
+                ) : null}
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-0.5">
                 {filtered.map((conv) => {
                   const other = getOther(conv)
                   const name = other?.name ?? "Пользователь"
@@ -386,20 +373,20 @@ export default function ChatPage() {
                     <Fragment key={conv.id}>
                     <Link
                       href={`/messages/${conv.id}`}
-                      className={`group flex min-w-0 items-center gap-3 rounded-[22px] border bg-white px-3 py-3 transition hover:border-zinc-200 hover:bg-zinc-50 lg:hidden lg:px-4 ${
-                        selectedId === conv.id ? "border-[hsl(var(--nashlo-orange)/0.35)] bg-orange-50" : "border-transparent"
-                      }`}
+                      className="group flex min-w-0 items-center gap-3 rounded-2xl px-2 py-3 transition active:bg-zinc-50 lg:hidden"
                     >
                       <div className="relative shrink-0">
                         {img ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={img} alt="" className="h-14 w-14 rounded-[18px] object-cover ring-1 ring-zinc-100" />
+                          <img src={img} alt="" className="h-[52px] w-[52px] rounded-xl object-cover" />
                         ) : (
-                          <div className={`flex h-14 w-14 items-center justify-center rounded-[18px] bg-gradient-to-br ${avatarTone(name)} text-lg font-bold text-white`}>
+                          <div className={`flex h-[52px] w-[52px] items-center justify-center rounded-xl bg-gradient-to-br ${avatarTone(name)} text-base font-bold text-white`}>
                             {initials(name)}
                           </div>
                         )}
-                        {conv.unreadCount > 0 && <span className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-[hsl(var(--nashlo-orange))]" />}
+                        {conv.unreadCount > 0 ? (
+                          <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-[#FF4F12]" />
+                        ) : null}
                       </div>
 
                       <div className="min-w-0 flex-1">
@@ -407,23 +394,18 @@ export default function ChatPage() {
                           <p className="min-w-0 flex-1 truncate text-[15px] font-semibold text-zinc-950">{title}</p>
                           <span className="shrink-0 text-xs text-zinc-400">{timeLabel(conv.updatedAt)}</span>
                         </div>
-                        <div className="mt-0.5 flex items-center gap-2">
-                          <p className="min-w-0 truncate text-sm text-zinc-500">{name}</p>
-                          {conv.listing && <span className="shrink-0 text-xs text-zinc-300">•</span>}
-                          {conv.listing && <p className="shrink-0 text-xs font-semibold text-zinc-500">{priceLabel(conv.listing.price)}</p>}
+                        <p className="mt-0.5 truncate text-sm text-zinc-500">{name}</p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <p className={`min-w-0 flex-1 truncate text-sm ${conv.unreadCount > 0 ? "font-semibold text-zinc-800" : "text-zinc-400"}`}>
+                            {lastText}
+                          </p>
+                          {conv.unreadCount > 0 ? (
+                            <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-[#FF4F12] px-1.5 text-[11px] font-bold text-white">
+                              {conv.unreadCount}
+                            </span>
+                          ) : null}
                         </div>
-                        <p className={`mt-1 truncate text-sm ${conv.unreadCount > 0 ? "font-semibold text-zinc-800" : "text-zinc-400"}`}>
-                          {lastText}
-                        </p>
                       </div>
-
-                      {conv.unreadCount > 0 ? (
-                        <span className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--nashlo-orange))] px-2 text-xs font-bold text-white">
-                          {conv.unreadCount}
-                        </span>
-                      ) : (
-                        <span className="hidden text-xl text-zinc-300 transition group-hover:translate-x-0.5 group-hover:text-zinc-500 sm:block">›</span>
-                      )}
                     </Link>
                     <button
                       key={`${conv.id}-desktop`}
@@ -431,7 +413,6 @@ export default function ChatPage() {
                       onClick={() => {
                         setPanelMode("conversation")
                         setSelectedId(conv.id)
-                        setSupport(null)
                         setMessageText("")
                         setConvs((current) => current.map((item) => item.id === conv.id ? { ...item, unreadCount: 0 } : item))
                       }}
@@ -482,7 +463,7 @@ export default function ChatPage() {
           </section>
         </aside>
 
-        <section className="hidden min-h-[760px] overflow-hidden rounded-[28px] border border-zinc-200 bg-[#fafafa] shadow-sm lg:flex lg:flex-col">
+        <section className="hidden h-full min-h-0 min-w-0 flex-col overflow-hidden bg-[#fafafa] lg:flex">
           {panelMode === "empty" ? (
             <div className="flex h-full flex-col p-8">
               <div className="flex items-center justify-between">
@@ -512,75 +493,13 @@ export default function ChatPage() {
               </div>
             </div>
           ) : panelMode === "support" ? (
-            supportLoading && !support ? (
-              <div className="flex h-full items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-[hsl(var(--nashlo-orange))]" />
-              </div>
-            ) : (
-              <>
-                <header className="flex shrink-0 items-center gap-4 border-b border-zinc-200 bg-white px-5 py-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[hsl(var(--nashlo-orange))] text-lg font-bold text-white">?</div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-lg font-semibold text-zinc-950">Поддержка Нашло</p>
-                    <p className="truncate text-sm text-zinc-500">Поможем с объявлениями, оплатой и безопасностью</p>
-                  </div>
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">онлайн</span>
-                </header>
-
-                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-                  {!support?.messages.length ? (
-                    <div className="flex h-full flex-col items-center justify-center text-center">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[hsl(var(--nashlo-orange)/0.12)] text-2xl font-bold text-[hsl(var(--nashlo-orange))]">?</div>
-                      <p className="mt-4 font-semibold text-zinc-950">Напишите в поддержку</p>
-                      <p className="mt-1 max-w-sm text-sm leading-6 text-zinc-500">Опишите вопрос подробно. Модератор увидит обращение в отдельном кабинете поддержки.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {support.messages.map((message) => {
-                        const isMe = message.sender.id === meId
-                        return (
-                          <div key={message.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                            <div className={`max-w-[72%] rounded-[22px] px-4 py-2.5 shadow-sm ${isMe ? "rounded-br-md bg-[hsl(var(--nashlo-orange))] text-white" : "rounded-bl-md bg-white text-zinc-950"}`}>
-                              <p className="whitespace-pre-wrap break-words text-sm leading-6">{message.text}</p>
-                              <p className={`mt-1 text-right text-[11px] ${isMe ? "text-white/70" : "text-zinc-400"}`}>{messageTime(message.createdAt)}</p>
-                            </div>
-                          </div>
-                        )
-                      })}
-                      <div ref={bottomRef} />
-                    </div>
-                  )}
-                </div>
-
-                <footer className="shrink-0 border-t border-zinc-200 bg-white px-5 py-4">
-                  <div className="flex items-end gap-3">
-                    <textarea
-                      value={messageText}
-                      onChange={(event) => setMessageText(event.target.value)}
-                      onKeyDown={handleMessageKey}
-                      rows={1}
-                      placeholder="Ваш вопрос"
-                      className="max-h-32 min-h-12 min-w-0 flex-1 resize-none rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm leading-6 text-zinc-950 outline-none placeholder:text-zinc-400 focus:border-[hsl(var(--nashlo-orange))] focus:bg-white"
-                    />
-                    <button
-                      type="button"
-                      onClick={sendMessage}
-                      disabled={!messageText.trim() || sending}
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[hsl(var(--nashlo-orange))] text-xl font-semibold text-white transition disabled:bg-zinc-100 disabled:text-zinc-400"
-                      aria-label="Отправить"
-                    >
-                      ↑
-                    </button>
-                  </div>
-                </footer>
-              </>
-            )
+            <SupportChat compactHeader className="h-full" />
           ) : detailLoading && !selected ? (
             <div className="flex h-full items-center justify-center">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-[hsl(var(--nashlo-orange))]" />
             </div>
           ) : selected ? (
-            <>
+            <div className="flex h-full min-h-0 flex-col overflow-hidden">
               <header className="shrink-0 border-b border-zinc-200 bg-white px-5 py-4">
                 <div className="flex items-center gap-4">
                   {selectedOther?.avatar ? (
@@ -626,7 +545,7 @@ export default function ChatPage() {
                 )}
               </header>
 
-              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+              <div ref={messagesScrollRef} className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
                 {selected.messages.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center text-center">
                     <div className={`flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br ${avatarTone(selectedName)} text-2xl font-bold text-white`}>
@@ -676,7 +595,7 @@ export default function ChatPage() {
                   </button>
                 </div>
               </footer>
-            </>
+            </div>
           ) : (
             <div className="flex h-full items-center justify-center p-8 text-center text-sm text-zinc-500">
               Диалог не найден.

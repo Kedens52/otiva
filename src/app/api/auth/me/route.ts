@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser, clearAuthCookie } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
@@ -9,6 +11,10 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
+    void prisma.user.update({
+      where: { id: user.id },
+      data: { lastSeenAt: new Date() },
+    }).catch(() => {})
     return NextResponse.json({ user })
   } catch {
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
@@ -47,6 +53,7 @@ export async function PATCH(request: NextRequest) {
         city: true,
         role: true,
         isVerified: true,
+        walletBalance: true,
         rating: true,
         reviewCount: true,
         createdAt: true,
@@ -84,3 +91,4 @@ export async function DELETE() {
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
   }
 }
+

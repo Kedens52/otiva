@@ -22,6 +22,7 @@ export async function getOrCreateSupportConversation(userId: string) {
 
   let conversation = await prisma.conversation.findFirst({
     where: {
+      conversationType: "SUPPORT",
       isSupport: true,
       members: {
         every: { userId: { in: [userId, supportUser.id] } },
@@ -36,6 +37,8 @@ export async function getOrCreateSupportConversation(userId: string) {
   if (!conversation) {
     conversation = await prisma.conversation.create({
       data: {
+        conversationType: "SUPPORT",
+        contextType: "SUPPORT_TICKET",
         isSupport: true,
         members: {
           create: [{ userId }, { userId: supportUser.id }],

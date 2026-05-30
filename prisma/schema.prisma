@@ -13,6 +13,11 @@ enum Role {
   ADMIN
 }
 
+enum ProfileType {
+  PERSON
+  COMPANY
+}
+
 enum ListingStatus {
   ACTIVE
   SOLD
@@ -26,10 +31,154 @@ enum MessageStatus {
   READ
 }
 
+enum ConversationType {
+  PERSONAL
+  BUSINESS
+  SUPPORT
+}
+
+enum ConversationContextType {
+  LISTING
+  BUSINESS_LISTING
+  BUSINESS_REQUEST
+  BUSINESS_INQUIRY
+  SUPPORT_TICKET
+  DIRECT
+}
+
+enum MessageSenderType {
+  USER
+  COMPANY
+  SUPPORT
+}
+
+enum SupportWorkflowStatus {
+  ACTIVE
+  WAITING_USER
+  WAITING_OPERATOR
+  RESOLVED_AUTO
+  CLOSED
+}
+
 enum ModerationAction {
   APPROVED
   REJECTED
   FLAGGED
+}
+
+enum NotificationType {
+  NEW_MESSAGE
+  LISTING_APPROVED
+  LISTING_REJECTED
+  LISTING_SOLD
+  NEW_REVIEW
+  PAYMENT_SUCCESS
+  PROMOTION_EXPIRING
+  WANT_TO_BUY_NEW_OFFER
+  WANT_TO_BUY_OFFER_ACCEPTED
+  WANT_TO_BUY_OFFER_DECLINED
+  WANT_TO_BUY_EXPIRING_SOON
+  WANT_TO_BUY_REJECTED
+}
+
+enum BadgeCode {
+  BEGINNER
+  FIRST_STEP
+  VERIFIED
+  ACTIVE
+  TRUSTED
+  PRO
+  SAFE_DEAL
+  PREMIUM
+}
+
+enum ReviewStatus {
+  PENDING
+  PUBLISHED
+  HIDDEN
+  REPORTED
+  DELETED
+  REJECTED
+}
+
+enum DealStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+/// Баллы Нашло — начисление / списание
+enum BonusTransactionType {
+  EARN
+  SPEND
+  ADJUST
+  REVERSAL
+}
+
+enum BonusTransactionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVERSED
+}
+
+enum BonusReason {
+  WELCOME
+  PHONE_VERIFIED
+  PROFILE_COMPLETE
+  AVATAR_ADDED
+  FIRST_QUALITY_LISTING
+  QUALITY_LISTING
+  SHARE_VK
+  SHARE_MAX
+  FAST_RESPONSE_DAY
+  DEAL_COMPLETED
+  REVIEW_LEFT
+  POSITIVE_REVIEW_RECEIVED
+  REFERRAL_REGISTERED
+  REFERRAL_ACTIVE
+  SPEND_BUMP
+  SPEND_HIGHLIGHT
+  SPEND_RECOMMENDATIONS
+  SPEND_AUTOBOOST
+  SPEND_PROMO_DISCOUNT
+  ADMIN_ADJUST
+  REVERSAL
+}
+
+enum SharePlatform {
+  VK
+  MAX
+}
+
+enum ReferralStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+/// Заявка покупателя «Куплю»
+enum WantToBuyStatus {
+  ACTIVE
+  CLOSED
+  EXPIRED
+  MODERATION
+  REJECTED
+}
+
+enum WantToBuyCondition {
+  NEW
+  USED
+  ANY
+}
+
+/// Статус отклика продавца на заявку (OfferStatus в коде приложения)
+enum WantToBuyOfferStatus {
+  PENDING
+  VIEWED
+  ACCEPTED
+  DECLINED
 }
 
 model User {
@@ -39,28 +188,416 @@ model User {
   vkId        String?  @unique
   yandexId    String?  @unique
   name        String?
+  firstName   String?
+  lastName    String?
   avatar      String?
   description String?
   city        String?
   role        Role     @default(USER)
   isVerified  Boolean  @default(false)
   isBanned    Boolean  @default(false)
+  walletBalance Int    @default(0)
+  /// Баллы Нашло (не выводятся, только внутри сайта)
+  bonusBalance  Int    @default(0)
+  bonusBlocked  Boolean @default(false)
+  /// Реферальный код для приглашений
+  referralCode  String?  @unique
   rating      Float    @default(0)
-  reviewCount Int      @default(0)
+  reviewCount          Int      @default(0)
+  positiveReviewsCount Int      @default(0)
+  neutralReviewsCount  Int      @default(0)
+  negativeReviewsCount Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Расширения профиля
+  profileType      ProfileType @default(PERSON)
+  profileHeadline  String?
+  region           String?
+  district         String?
+  metro            String?
+  addressNote      String?
+  sellerRole       String?
+  businessCategory String?
+  experience       String?
+  serviceArea      String?
+  deliveryOptions  String[]  @default([])
+  guaranteeText    String?
+  companyRole      String?
+  vkUrl            String?
+  maxUrl           String?
+  websiteUrl       String?
+  showPhonePublicly    Boolean @default(false)
+  showEmailPublicly    Boolean @default(false)
+  showCityPublicly     Boolean @default(true)
+  showDistrictPublicly Boolean @default(true)
+  showActivityPublicly Boolean @default(true)
+  showBadgesPublicly   Boolean @default(true)
+  showReviewsPublicly  Boolean @default(true)
+  companyName      String?
+  companyInn       String?
+  companyWebsite   String?
+  emailVerified    Boolean  @default(false)
+  emailVerifiedAt  DateTime?
+  phoneVerifiedAt  DateTime?
+  /// Показывать номер покупателям (по кнопке «Показать номер»)
+  showPhone        Boolean  @default(false)
+  /// Последняя активность (для значка ACTIVE)
+  lastSeenAt       DateTime?
+  /// Премиум-профиль до даты
+  premiumUntil     DateTime?
+  /// Безопасная сделка включена
+  safeDealEnabled  Boolean  @default(false)
+  /// Ручная проверка Нашло (для PRO)
+  manuallyVerified Boolean  @default(false)
+  /// ЧПУ публичного профиля продавца
+  publicSlug       String?  @unique
+  lastLoginAt      DateTime?
+  lastLoginIp      String?
+  notificationSettings Json?
+
+  trustTier           String @default("NORMAL")
+  internalTrustScore  Float  @default(50)
+  riskPenaltyScore    Float  @default(0)
+  avgResponseMinutes  Int?
+  /// Человекочитаемые плюсы TrustScore (последний пересчёт), только для админки
+  trustReasons        Json?
+  /// Человекочитаемые факторы RiskScore (последний пересчёт), только для админки
+  riskReasons         Json?
+  lastTrustCalculatedAt DateTime?
+  /// Мягкое ограничение с админки: часть действий требуют проверки
+  accountRestricted   Boolean @default(false)
+
   listings             Listing[]
+  trustEvents          UserTrustEvent[]
   sentMessages         Message[]          @relation("SentMessages")
   conversationMembers  ConversationMember[]
-  moderationLogs       ModerationLog[]
+  moderationLogs       ModerationLog[] @relation("UserModerationLogs")
   reviews              Review[]           @relation("ReviewsReceived")
   reviewsGiven         Review[]           @relation("ReviewsGiven")
+  dealsAsSeller        Deal[]             @relation("DealSeller")
+  dealsAsBuyer         Deal[]             @relation("DealBuyer")
+  reviewReports        ReviewReport[]     @relation("ReviewReporter")
   favorites            Favorite[]
   otpCodes             OtpCode[]
+  walletTransactions   WalletTransaction[]
+  bonusTransactions    BonusTransaction[]
+  bonusShareEvents     BonusShareEvent[]    @relation("UserBonusShares")
+  referralsMade        Referral[]           @relation("ReferrerUser")
+  referralReceived     Referral?            @relation("ReferredUser")
+  payments             Payment[]
+  pushSubscriptions    PushSubscription[]
+  notifications        Notification[]
+  sessions             Session[]
+  paidServices         PaidService[]
+  legalConsents        LegalConsent[]
+  cookieConsentEvents  CookieConsentEvent[]
+  reportsAgainst       Report[]         @relation("ReportTargetUser")
+  siteVisits           SiteVisit[]
+  userBadges           UserBadge[]
+  adCampaigns          AdCampaign[]       @relation("UserAdCampaigns")
+  adPayments           AdPayment[]        @relation("UserAdPayments")
+  adCampaignChanges    AdCampaignChangeLog[] @relation("UserAdCampaignChanges")
+  ownedCompanies       Company[]          @relation("CompanyOwner")
+  companyMemberships   CompanyMember[]
+  businessInquiriesSent BusinessInquiry[] @relation("BusinessInquiryFromUser")
+  companyReviewsAuthored CompanyReview[]  @relation("CompanyReviewsAuthored")
+  wantToBuys             WantToBuy[]
+  sellerOffers           WantToBuyOffer[] @relation("WantToBuySellerOffers")
+  contentModerationIncidents ContentModerationIncident[]
+  uploadedMediaFingerprints  UploadedMediaFingerprint[]
 
   @@index([phone])
+  @@index([premiumUntil])
   @@index([role])
+  @@index([trustTier])
+}
+
+model Badge {
+  id          String    @id @default(cuid())
+  code        BadgeCode @unique
+  title       String
+  subtitle    String
+  description String
+  icon        String
+  priority    Int
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId   String
+  badge     Badge     @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  issuedAt  DateTime  @default(now())
+  expiresAt DateTime?
+  issuedBy  String    @default("system")
+  reason    String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+  @@index([expiresAt])
+}
+
+model UserTrustEvent {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String
+  scoreDelta Int?
+  reason     String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// Активные сессии пользователя (для раздела Безопасность)
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token        String   @unique
+  userAgent    String?
+  ip           String?
+  device       String?  // "iPhone, Safari" — парсим из UA
+  lastActiveAt DateTime @default(now())
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  link      String?
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model WalletTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  status    String   @default("COMPLETED")
+  amount    Int
+  balanceAfter Int
+  title     String
+  listingId String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model BonusTransaction {
+  id           String                 @id @default(cuid())
+  userId       String
+  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         BonusTransactionType
+  status       BonusTransactionStatus @default(APPROVED)
+  reason       BonusReason
+  amount       Int
+  balanceAfter Int
+  /// Уникальный ключ события (listingId, dealId, share:listing:VK и т.д.)
+  referenceKey String?
+  listingId    String?
+  metadata     Json?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  @@unique([userId, reason, referenceKey])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status])
+  @@index([reason])
+}
+
+model BonusShareEvent {
+  id         String        @id @default(cuid())
+  userId     String
+  user       User          @relation("UserBonusShares", fields: [userId], references: [id], onDelete: Cascade)
+  listingId  String
+  platform   SharePlatform
+  createdAt  DateTime      @default(now())
+
+  @@index([userId, createdAt])
+  @@index([listingId, platform])
+}
+
+model Referral {
+  id             String         @id @default(cuid())
+  referrerId     String
+  referrer       User           @relation("ReferrerUser", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUserId String         @unique
+  referredUser   User           @relation("ReferredUser", fields: [referredUserId], references: [id], onDelete: Cascade)
+  status         ReferralStatus @default(PENDING)
+  activatedAt    DateTime?
+  createdAt      DateTime       @default(now())
+
+  @@index([referrerId])
+  @@index([status])
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  SUCCEEDED
+  CANCELED
+  FAILED
+  REFUNDED
+  PARTIAL_REFUNDED
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  orderId        String        @unique
+  tbankPaymentId String?       @unique
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listingId      String?
+  listing        Listing?      @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  serviceType    String
+  amount         Int
+  status         PaymentStatus @default(PENDING)
+  paymentUrl     String?
+  raw            Json?
+  paidAt         DateTime?
+  canceledAt     DateTime?
+  refundedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  events         PaymentEvent[]
+
+  @@index([userId])
+  @@index([listingId])
+  @@index([status])
+}
+
+model PaymentEvent {
+  id              String   @id @default(cuid())
+  paymentId       String
+  payment         Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  providerEventId String?
+  rawEventHash    String
+  status          String
+  payload         Json
+  createdAt       DateTime @default(now())
+
+  @@unique([paymentId, rawEventHash])
+  @@index([paymentId, createdAt(sort: Desc)])
+  @@index([providerEventId])
+}
+
+model SiteBanner {
+  id        String   @id @default(cuid())
+  title     String
+  linkText  String?
+  href      String   @default("/")
+  image     String?  @db.Text
+  imageOnly Boolean  @default(false)
+  bgFrom    String   @default("#bbf7d0")
+  bgTo      String   @default("#bae6fd")
+  active          Boolean  @default(false)
+  disclosureMark  String?  @default("ad")  // "ad" | "partner"
+  startsAt        DateTime?
+  endsAt          DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([active])
+  @@index([createdAt])
+}
+
+enum BannerSlotId {
+  leaderboard
+  mobileLeaderboard
+  sidebarTop
+  sidebarTall
+  listingSidebar
+}
+
+enum BannerSlotAdStatus {
+  draft
+  pending
+  approved
+  rejected
+}
+
+/// Пометка в углу баннера: «Реклама» или «Партнёр сервиса»
+enum BannerAdDisclosureMark {
+  ad
+  partner
+}
+
+model BannerSlotAd {
+  id                String             @id @default(cuid())
+  slot              BannerSlotId
+  title             String
+  subtitle          String
+  cta               String
+  href              String
+  image             String?            @db.Text
+  mediaType         AdMediaType        @default(IMAGE)
+  mediaMimeType     String?
+  mediaWidth        Int?
+  mediaHeight       Int?
+  mediaDuration     Int?
+  advertiser        String
+  disclosureMark    BannerAdDisclosureMark @default(ad)
+  active            Boolean            @default(false)
+  startsAt          DateTime           @db.Date
+  endsAt            DateTime           @db.Date
+  erid              String
+  ordName           String
+  ownerEmail        String?
+  ownerName         String?
+  status            BannerSlotAdStatus @default(draft)
+  moderationComment String?
+  impressions       Int                @default(0)
+  clicks            Int                @default(0)
+  lastImpressionAt  DateTime?
+  lastClickAt       DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([slot, active])
+  @@index([updatedAt])
 }
 
 model OtpCode {
@@ -86,13 +623,48 @@ model Category {
   description String?
   sortOrder   Int       @default(0)
   isActive    Boolean   @default(true)
+  seoTitle       String?
+  seoDescription String?
+  h1             String?
+  seoText        String?
+  canonicalUrl   String?
+  indexable      Boolean  @default(true)
+  sitemapPriority Float   @default(0.7)
+  sitemapChangefreq String @default("weekly")
   listings    Listing[]
+  wantToBuys  WantToBuy[]
 
   @@index([slug])
+  @@index([indexable])
+}
+
+/// SEO-лендинги популярных запросов (/s/slug)
+model SeoLanding {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  title           String
+  seoTitle        String?
+  seoDescription  String?
+  h1              String?
+  seoText         String?
+  canonicalUrl    String?
+  indexable       Boolean  @default(true)
+  categorySlug    String?
+  internalCategorySlug String?
+  city            String?
+  fixedParams     Json?
+  sitemapPriority Float    @default(0.7)
+  sitemapChangefreq String @default("weekly")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([indexable])
 }
 
 model Listing {
   id          String        @id @default(cuid())
+  /// ЧПУ для URL: title-city-id
+  slug        String?       @unique
   title       String
   description String
   price       Int
@@ -101,12 +673,29 @@ model Listing {
   images      String[]
   location    String?
   city        String?
+  district    String?
   video       String?
   lat         Float?
   lng         Float?
-  views       Int           @default(0)
-  isPromoted  Boolean       @default(false)
-  promotedUntil DateTime?
+  showExactAddress Boolean  @default(false)
+  views           Int           @default(0)
+  uniqueViews     Int           @default(0)
+  rejectionReason String?
+  /// Код причины из справочника модерации (WRONG_CATEGORY и т.п.)
+  moderationReasonCode String?
+  /// Нормализованный отпечаток title+description (дедупликация)
+  contentFingerprint   String?
+  /// Отправлено на доработку продавцом после решения модератора
+  returnedForRevision Boolean       @default(false)
+  /// Недвижимость: последнее подтверждение актуальности
+  freshnessConfirmedAt DateTime?
+  autoApproved    Boolean       @default(false)
+  isPromoted     Boolean       @default(false)
+  promotedUntil  DateTime?
+  highlightedUntil DateTime?
+  recommendedUntil DateTime?
+  autoboostUntil DateTime?
+  pinnedUntil    DateTime?
 
   categoryId  String
   category    Category      @relation(fields: [categoryId], references: [id])
@@ -119,25 +708,143 @@ model Listing {
 
   conversations Conversation[]
   moderationLogs ModerationLog[]
+  contentIncidents ContentModerationIncident[]
   favorites     Favorite[]
   reports       Report[]
+  payments      Payment[]
+  paidServices  PaidService[]
+  listingViews  ListingView[]
+  reviews       Review[]
+  deals         Deal[]
+  priceInsight  ListingPriceInsight?
+  wantToBuyOffers WantToBuyOffer[]
 
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
   @@index([categoryId])
   @@index([sellerId])
+  @@index([sellerId, contentFingerprint])
+  @@index([contentFingerprint])
   @@index([status])
   @@index([city])
+  @@index([district])
   @@index([price])
   @@index([createdAt])
 }
 
+/// Заявка покупателя «Куплю» (обратный маркетплейс)
+model WantToBuy {
+  id                   String             @id @default(cuid())
+  userId               String
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title                String
+  description          String             @default("")
+  categoryId           String
+  category             Category           @relation(fields: [categoryId], references: [id])
+  priceMax             Int?
+  city                 String?
+  condition            WantToBuyCondition @default(ANY)
+  status               WantToBuyStatus    @default(MODERATION)
+  views                Int                @default(0)
+  expiresAt            DateTime
+  rejectionReason      String?
+  moderationReasonCode String?
+  autoApproved         Boolean            @default(false)
+  contentFingerprint   String?
+  /// Напоминание «истекает через 3 дня» уже отправлено
+  expiringSoonNotifiedAt DateTime?
+  offers               WantToBuyOffer[]
+  contentIncidents     ContentModerationIncident[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, contentFingerprint])
+  @@index([contentFingerprint])
+  @@index([status, createdAt])
+  @@index([categoryId])
+  @@index([city])
+  @@index([expiresAt])
+  @@index([priceMax])
+}
+
+/// Отклик продавца на заявку «Куплю»
+model WantToBuyOffer {
+  id          String               @id @default(cuid())
+  wantToBuyId String
+  wantToBuy   WantToBuy            @relation(fields: [wantToBuyId], references: [id], onDelete: Cascade)
+  sellerId    String
+  seller      User                 @relation("WantToBuySellerOffers", fields: [sellerId], references: [id], onDelete: Cascade)
+  message     String
+  price       Int
+  listingId   String?
+  listing     Listing?             @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  status      WantToBuyOfferStatus @default(PENDING)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@unique([wantToBuyId, sellerId])
+  @@index([wantToBuyId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// Оценка рыночной цены при создании/редактировании объявления
+model ListingPriceInsight {
+  id         String   @id @default(cuid())
+  listingId  String   @unique
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  status     String
+  min        Int?
+  max        Int?
+  median     Int?
+  p25        Int?
+  p75        Int?
+  sampleSize Int      @default(0)
+  confidence String?
+  message    String?
+  /// Причина низкой цены от продавца (срочная продажа, дефекты и т.д.)
+  reason     String?
+  checkedAt  DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([status])
+  @@index([checkedAt])
+}
+
 model Conversation {
   id        String   @id @default(cuid())
+  conversationType ConversationType @default(PERSONAL)
+  contextType      ConversationContextType @default(DIRECT)
   listingId String?
   listing   Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  companyId String?
+  company   Company? @relation("CompanyConversations", fields: [companyId], references: [id], onDelete: SetNull)
+  businessListingId String?
+  businessListing   BusinessListing? @relation(fields: [businessListingId], references: [id], onDelete: SetNull)
+  businessRequestId String?
+  businessRequest   BusinessRequest? @relation(fields: [businessRequestId], references: [id], onDelete: SetNull)
+  businessInquiryId String? @unique
+  businessInquiry   BusinessInquiry? @relation(fields: [businessInquiryId], references: [id], onDelete: SetNull)
   isSupport Boolean  @default(false)
+
+  /// Состояние обращения в чате поддержки (для isSupport = true)
+  supportWorkflowStatus SupportWorkflowStatus @default(ACTIVE)
+  operatorNeeded        Boolean               @default(false)
+  lastAutoReplyCatalogId String?
+  /// HELPFUL | ESCALATED — реакция пользователя на последний автоответ
+  lastAutoReplyAction    String?
+  /// Тема обращения в поддержке (см. src/lib/support/topics.ts)
+  supportTopic           String?
+  supportSubtopic        String?
+  supportListingId       String?
+  supportAdCampaignId    String?
+  supportPriority        String?  @default("normal")
+  /// Состояние сценария бота (JSON)
+  supportBotState        Json?
 
   members   ConversationMember[]
   messages  Message[]
@@ -146,7 +853,48 @@ model Conversation {
   updatedAt DateTime @updatedAt
 
   @@index([listingId])
+  @@index([companyId])
+  @@index([businessListingId])
+  @@index([conversationType])
   @@index([isSupport])
+  @@index([supportWorkflowStatus])
+}
+
+/// Шаблоны быстрых ответов оператора поддержки (/admin/support)
+model SupportOperatorQuickReply {
+  id               String   @id @default(cuid())
+  title            String
+  category         String
+  body             String   @db.Text
+  tags             String[] @default([])
+  active           Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  isFavorite       Boolean  @default(false)
+  usageCount       Int      @default(0)
+  createdByStaffId String?
+  updatedByStaffId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  usageLogs SupportQuickReplyUsage[]
+
+  @@index([category, active, sortOrder])
+  @@index([active, isFavorite])
+}
+
+/// История использования быстрых ответов оператором
+model SupportQuickReplyUsage {
+  id             String   @id @default(cuid())
+  quickReplyId   String
+  quickReply     SupportOperatorQuickReply @relation(fields: [quickReplyId], references: [id], onDelete: Cascade)
+  conversationId String
+  staffId        String
+  wasEdited      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([quickReplyId, createdAt(sort: Desc)])
+  @@index([conversationId, createdAt(sort: Desc)])
+  @@index([staffId, createdAt(sort: Desc)])
 }
 
 model ConversationMember {
@@ -170,39 +918,108 @@ model Message {
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   senderId       String
   sender         User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  senderType     MessageSenderType @default(USER)
+  senderCompanyId String?
   status         MessageStatus @default(SENT)
+  /// JSON: автоответы и служебные сообщения поддержки (см. src/lib/support/payload.ts)
+  supportPayload Json?
   createdAt      DateTime     @default(now())
 
   @@index([conversationId])
   @@index([senderId])
+  @@index([senderCompanyId])
 }
 
 model ModerationLog {
   id        String           @id @default(cuid())
   listingId String
   listing   Listing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  moderatorId String
-  moderator User             @relation(fields: [moderatorId], references: [id])
+  moderatorId String?
+  moderator User?            @relation("UserModerationLogs", fields: [moderatorId], references: [id], onDelete: SetNull)
+  staffId   String?
+  staff     StaffAccount?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
   action    ModerationAction
   reason    String?
   createdAt DateTime         @default(now())
 
   @@index([listingId])
   @@index([moderatorId])
+  @@index([staffId])
 }
 
 model Review {
+  id             String        @id @default(cuid())
+  authorId       String
+  targetUserId   String
+  listingId      String?
+  conversationId String?
+  dealId         String?
+  rating         Int
+  tags           String[]
+  text           String?       @db.Text
+  replyText      String?       @db.Text
+  repliedAt      DateTime?
+  /// PUBLISHED | PENDING_MODERATION | DISPUTED — спорные не ломают публичный рейтинг до решения
+  reviewModerationState String  @default("PUBLISHED")
+  reviewStatus   ReviewStatus  @default(PUBLISHED)
+  disputedAt     DateTime?
+  isHidden       Boolean       @default(false)
+  isDeleted      Boolean       @default(false)
+  reportCount    Int           @default(0)
+  riskScore      Int           @default(0)
+  moderationNote String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  author     User         @relation("ReviewsGiven", fields: [authorId], references: [id], onDelete: Cascade)
+  targetUser User         @relation("ReviewsReceived", fields: [targetUserId], references: [id], onDelete: Cascade)
+  listing    Listing?     @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  deal       Deal?        @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  reports    ReviewReport[]
+
+  @@unique([authorId, targetUserId, listingId])
+  @@index([targetUserId])
+  @@index([authorId])
+  @@index([listingId])
+  @@index([conversationId])
+  @@index([dealId])
+  @@index([reviewStatus])
+}
+
+model Deal {
+  id          String     @id @default(cuid())
+  listingId   String
+  listing     Listing    @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  sellerId    String
+  seller      User       @relation("DealSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  buyerId     String
+  buyer       User       @relation("DealBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  conversationId String?
+  status      DealStatus @default(PENDING)
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  reviews     Review[]
+
+  @@index([listingId])
+  @@index([sellerId])
+  @@index([buyerId])
+  @@index([status])
+}
+
+model ReviewReport {
   id         String   @id @default(cuid())
-  rating     Int
-  text       String?
-  sellerId   String
-  seller     User     @relation("ReviewsReceived", fields: [sellerId], references: [id], onDelete: Cascade)
-  authorId   String
-  author     User     @relation("ReviewsGiven", fields: [authorId], references: [id], onDelete: Cascade)
+  reviewId   String
+  review     Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reporterId String
+  reporter   User     @relation("ReviewReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reason     String
+  comment    String?
   createdAt  DateTime @default(now())
 
-  @@unique([sellerId, authorId])
-  @@index([sellerId])
+  @@unique([reviewId, reporterId])
+  @@index([reviewId])
+  @@index([reporterId])
 }
 
 model Favorite {
@@ -218,14 +1035,930 @@ model Favorite {
 }
 
 model Report {
-  id        String   @id @default(cuid())
-  listingId String
-  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  reason    String
-  comment   String   @default("")
-  status    String   @default("pending")
-  createdAt DateTime @default(now())
+  id                String           @id @default(cuid())
+  listingId         String?
+  listing           Listing?         @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  targetUserId      String?
+  targetUser        User?            @relation("ReportTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  companyId         String?
+  company           Company?         @relation("ReportCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  businessListingId String?
+  businessListing   BusinessListing? @relation("ReportBusinessListing", fields: [businessListingId], references: [id], onDelete: Cascade)
+  reason            String
+  reportCategory    String?
+  comment           String           @default("")
+  status            String           @default("pending")
+  createdAt         DateTime         @default(now())
 
   @@index([listingId])
+  @@index([targetUserId])
+  @@index([companyId])
+  @@index([businessListingId])
+  @@index([status])
+}
+
+enum ContentModerationSource {
+  LISTING
+  WANT_TO_BUY
+  LISTING_UPLOAD
+}
+
+enum ContentModerationSeverity {
+  BLOCKED
+  FLAGGED
+}
+
+/// Автоматические срабатывания: запрещённый контент, дубли текста, отклонённые фото
+model ContentModerationIncident {
+  id           String                    @id @default(cuid())
+  source       ContentModerationSource
+  severity     ContentModerationSeverity
+  userId       String
+  user         User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listingId    String?
+  listing      Listing?                  @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  wantToBuyId  String?
+  wantToBuy    WantToBuy?                @relation(fields: [wantToBuyId], references: [id], onDelete: SetNull)
+  reasonCode   String
+  summary      String
+  matchedRules Json?
+  payload      Json
+  status       String                    @default("pending")
+  reviewedAt   DateTime?
+  staffId      String?
+  staff        StaffAccount?             @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  createdAt    DateTime                  @default(now())
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([listingId])
+  @@index([wantToBuyId])
+}
+
+model UploadedMediaFingerprint {
+  id          String   @id @default(cuid())
+  sha256      String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url         String
+  mimeType    String
+  sizeBytes   Int
+  width       Int?
+  height      Int?
+  blocked     Boolean  @default(false)
+  blockReason String?
+  createdAt   DateTime @default(now())
+
+  @@index([sha256])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([sha256, blocked])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN PANEL — Staff, Sessions, Audit, Business CRM
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum StaffRole {
+  OWNER
+  ADMIN
+  MODERATOR
+  SUPPORT
+  BUSINESS_MANAGER
+  B2B_MODERATOR
+  FINANCE
+}
+
+enum StaffStatus {
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum BusinessClientStatus {
+  NEW
+  CONTACTED
+  NEGOTIATING
+  ACTIVE_CLIENT
+  PAUSED
+  LOST
+}
+
+enum BusinessDealStatus {
+  NEW
+  IN_PROGRESS
+  WON
+  LOST
+  ON_HOLD
+}
+
+model StaffAccount {
+  id             String      @id @default(cuid())
+  login          String      @unique
+  displayName    String?
+  role           StaffRole
+  status         StaffStatus @default(ACTIVE)
+  codeHash       String
+  codeChangedAt  DateTime    @default(now())
+  failedAttempts Int         @default(0)
+  lockedUntil    DateTime?
+  lastLoginAt    DateTime?
+  lastLoginIp    String?
+  lastUserAgent  String?
+  createdById    String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  revokedAt      DateTime?
+
+  sessions       AdminSession[]
+  auditLogs      AdminAuditLog[]
+  moderationLogs ModerationLog[]
+  reviewedContentIncidents ContentModerationIncident[]
+  // Business CRM relations
+  managedClients BusinessClient[] @relation("AssignedManager")
+  businessDeals  BusinessDeal[]   @relation("DealManager")
+  businessNotes  BusinessNote[]   @relation("NoteAuthor")
+
+  @@index([role, status])
+  @@index([status])
+}
+
+model AdminSession {
+  id          String    @id @default(cuid())
+  staffId     String
+  staff       StaffAccount @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  ip          String?
+  userAgent   String?
+  lastUsedAt  DateTime?
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([staffId])
+  @@index([expiresAt])
+  @@index([lastUsedAt])
+}
+
+model AdminAuditLog {
+  id          String    @id @default(cuid())
+  actorId     String?
+  actor       StaffAccount? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action      String
+  targetType  String?
+  targetId    String?
+  metadata    Json?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+}
+
+model BusinessClient {
+  id                String              @id @default(cuid())
+  companyName       String
+  inn               String?
+  ogrn              String?
+  category          String?
+  contactName       String?
+  phone             String?
+  email             String?
+  city              String?
+  website           String?
+  source            String?
+  status            BusinessClientStatus @default(NEW)
+  assignedManagerId String?
+  assignedManager   StaffAccount?       @relation("AssignedManager", fields: [assignedManagerId], references: [id], onDelete: SetNull)
+  notes             String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  deals             BusinessDeal[]
+  businessNotes     BusinessNote[]
+
+  @@index([assignedManagerId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+}
+
+model BusinessDeal {
+  id               String             @id @default(cuid())
+  businessClientId String
+  businessClient   BusinessClient     @relation(fields: [businessClientId], references: [id], onDelete: Cascade)
+  managerId        String?
+  manager          StaffAccount?      @relation("DealManager", fields: [managerId], references: [id], onDelete: SetNull)
+  title            String
+  status           BusinessDealStatus @default(NEW)
+  amount           Int?
+  packageName      String?
+  nextContactAt    DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([managerId, status])
+  @@index([nextContactAt])
+  @@index([businessClientId])
+}
+
+model BusinessNote {
+  id               String          @id @default(cuid())
+  businessClientId String
+  businessClient   BusinessClient  @relation(fields: [businessClientId], references: [id], onDelete: Cascade)
+  authorId         String?
+  author           StaffAccount?   @relation("NoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  text             String
+  createdAt        DateTime        @default(now())
+
+  @@index([businessClientId, createdAt(sort: Desc)])
+  @@index([authorId])
+}
+
+enum PaidServiceType {
+  BUMP        // поднятие в поиске
+  HIGHLIGHT   // выделение цветом
+  PIN         // закрепление в категории
+  TURBO       // турбо-продвижение
+}
+
+enum PaidServiceStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+model PaidService {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listingId   String
+  listing     Listing           @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  serviceType PaidServiceType
+  durationDays Int
+  price       Int
+  status      PaidServiceStatus @default(ACTIVE)
+  startsAt    DateTime          @default(now())
+  endsAt      DateTime
+    createdAt   DateTime          @default(now())
+
+  @@index([userId])
+  @@index([listingId])
+  @@index([status])
+  @@index([endsAt])
+}
+
+enum SiteVisitType {
+  PAGE_VIEW
+  REGISTRATION
+  LOGIN
+}
+
+/// Заходы и переходы по сайту (для админ-аналитики)
+model SiteVisit {
+  id          String        @id @default(cuid())
+  type        SiteVisitType @default(PAGE_VIEW)
+  path        String
+  referrer    String?
+  userId      String?
+  user        User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  visitorId   String
+  fingerprint String
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime      @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@index([path, createdAt(sort: Desc)])
+  @@index([visitorId, createdAt(sort: Desc)])
+  @@index([fingerprint, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([type, createdAt(sort: Desc)])
+}
+
+// Трекинг уникальных просмотров по fingerprint (ip + userAgent hash)
+model ListingView {
+  id          String   @id @default(cuid())
+  listingId   String
+  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  fingerprint String   // sha256(ip + userAgent)[0:16]
+  createdAt   DateTime @default(now())
+
+  @@unique([listingId, fingerprint])
+  @@index([listingId])
+}
+
+/// Фиксация согласий с документами и политиками (152-ФЗ, оферта и т.д.)
+enum LegalConsentType {
+  USER_AGREEMENT
+  PRIVACY_POLICY
+  PERSONAL_DATA_PROCESSING
+  COOKIE
+  OFFER
+  LISTING_RULES
+}
+
+model LegalConsent {
+  id              String             @id @default(cuid())
+  userId          String?
+  user            User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  consentType     LegalConsentType
+  documentVersion String
+  source          String
+  ip              String?
+  userAgent       String?
+  createdAt       DateTime           @default(now())
+
+  @@index([userId])
+  @@index([consentType])
+  @@index([createdAt])
+}
+
+/// Выбор пользователя в баннере cookie (для админ-аналитики и 152-ФЗ)
+enum CookieConsentChoice {
+  ANALYTICS_ACCEPTED
+  ESSENTIAL_ONLY
+}
+
+model CookieConsentEvent {
+  id        String              @id @default(cuid())
+  choice    CookieConsentChoice
+  source    String
+  userId    String?
+  user      User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  visitorId String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime            @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@index([choice, createdAt(sort: Desc)])
+  @@index([userId])
+}
+
+// ─── Рекламная система ───────────────────────────────────────────────────────
+
+enum AdPlacement {
+  MOBILE_FEED_INLINE
+  DESKTOP_FEED_INLINE
+  CATEGORY_FEED_INLINE
+  SEARCH_FEED_INLINE
+  LISTING_PAGE_TOP
+  LISTING_PAGE_MIDDLE
+  LISTING_PAGE_BOTTOM
+  SELLER_PROFILE
+  HOME_RECOMMENDATIONS
+  SIDEBAR_DESKTOP
+}
+
+enum AdType {
+  NATIVE_CARD
+  BANNER
+  PROMOTED_LISTING
+  SERVICE_CARD
+  SHOP_CARD
+  EXTERNAL_AD
+}
+
+enum AdStatus {
+  DRAFT
+  WAITING_PAYMENT
+  PENDING_REVIEW
+  ACTIVE
+  PAUSED
+  REJECTED
+  NEEDS_CHANGES
+  FINISHED
+  ARCHIVED
+}
+
+enum AdPricingModel {
+  FIXED
+  CPM
+  CPC
+}
+
+enum AdPaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum AdDevice {
+  MOBILE
+  DESKTOP
+  TABLET
+  ALL
+}
+
+enum AdMediaType {
+  NONE
+  IMAGE
+  GIF
+  VIDEO
+}
+
+enum AdEventType {
+  IMPRESSION
+  CLICK
+  HIDE
+  REPORT
+  MEDIA_LOADED
+  VIDEO_PLAY
+  VIDEO_COMPLETE
+}
+
+/// Тип рекламного места в едином справочнике (баннер-слот, лента, полоса)
+enum AdPlacementKind {
+  BANNER_SLOT
+  CAMPAIGN
+  SITE_STRIP
+}
+
+enum AdPlacementDeviceScope {
+  MOBILE
+  DESKTOP
+  ALL
+}
+
+/// Настройки рекламного места: размеры, форматы, лимиты, цены, fallback
+model AdPlacementConfig {
+  id                 String                 @id @default(cuid())
+  /// Код места: leaderboard | MOBILE_FEED_INLINE | siteBanner
+  code               String                 @unique
+  kind               AdPlacementKind
+  name               String
+  description        String?                @db.Text
+  pages              String?
+  whereOnPage        String?                @db.Text
+  deviceScope        AdPlacementDeviceScope @default(ALL)
+  designWidth        Int?
+  designHeight       Int?
+  displayWidth       Int?
+  allowedFormats     String[]               @default([])
+  maxFileBytes       Int?
+  active             Boolean                @default(true)
+  maxActiveCreatives Int                    @default(3)
+  sortPriority       Int                    @default(0)
+  pricePerMinute     Int?
+  pricePerHour       Int?
+  pricePerDay        Int?
+  pricePerWeek       Int?
+  fallbackTitle      String?
+  fallbackSubtitle   String?
+  fallbackCta        String?
+  fallbackHref       String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  @@index([kind, active])
+  @@index([sortPriority])
+}
+
+model AdCampaign {
+  id                          String          @id @default(cuid())
+  ownerId                     String?
+  owner                       User?           @relation("UserAdCampaigns", fields: [ownerId], references: [id], onDelete: Cascade)
+  title                       String
+  description                 String?
+  /// Legacy: если mediaUrl пуст, показ через resolveCampaignMedia как IMAGE
+  imageUrl                    String?
+  mediaType                   AdMediaType     @default(NONE)
+  mediaUrl                    String?
+  mediaPosterUrl              String?
+  mediaAlt                    String?
+  mediaWidth                  Int?
+  mediaHeight                 Int?
+  mediaDuration               Int?
+  mediaSize                   Int?
+  mediaMimeType               String?
+  targetUrl                   String
+  ctaText                     String?
+  label                       String?
+  city                        String?
+  companyName                 String?
+  phone                       String?
+  type                        AdType          @default(NATIVE_CARD)
+  placements                  AdPlacement[]
+  status                      AdStatus        @default(DRAFT)
+  categoryIds                 String[]        @default([])
+  subcategoryIds              String[]        @default([])
+  cityIds                     String[]        @default([])
+  regionIds                   String[]        @default([])
+  districtIds                 String[]        @default([])
+  device                      AdDevice        @default(ALL)
+  keywords                    String[]        @default([])
+  interests                   String[]        @default([])
+  startDate                   DateTime?
+  endDate                     DateTime?
+  pricingModel                AdPricingModel  @default(FIXED)
+  budget                      Int?
+  dailyBudget                 Int?
+  spent                       Int             @default(0)
+  maxImpressionsPerUserPerDay Int             @default(10)
+  maxImpressionsPerSession    Int             @default(3)
+  impressions                 Int             @default(0)
+  clicks                      Int             @default(0)
+  moderationNote              String?
+  createdAt                   DateTime        @default(now())
+  updatedAt                   DateTime        @updatedAt
+
+  events      AdEvent[]
+  payments    AdPayment[]
+  changeLogs  AdCampaignChangeLog[]
+
+  @@index([status])
+  @@index([ownerId, status])
+  @@index([updatedAt(sort: Desc)])
+}
+
+model AdPayment {
+  id                String           @id @default(cuid())
+  userId            String
+  user              User             @relation("UserAdPayments", fields: [userId], references: [id], onDelete: Cascade)
+  adCampaignId      String
+  adCampaign        AdCampaign       @relation(fields: [adCampaignId], references: [id], onDelete: Cascade)
+  amount            Int
+  currency          String           @default("RUB")
+  status            AdPaymentStatus  @default(PENDING)
+  provider          String           @default("internal")
+  providerPaymentId String?
+  createdAt         DateTime         @default(now())
+  paidAt            DateTime?
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([adCampaignId])
+  @@index([status])
+}
+
+/// Веса честного ранжирования объявлений (редактируются в админке)
+model ListingRankingSettings {
+  id        String   @id @default("default")
+  weights   Json
+  updatedAt DateTime @updatedAt
+}
+
+model AdCampaignChangeLog {
+  id           String     @id @default(cuid())
+  adCampaignId String
+  adCampaign   AdCampaign @relation(fields: [adCampaignId], references: [id], onDelete: Cascade)
+  userId       String?
+  user         User?      @relation("UserAdCampaignChanges", fields: [userId], references: [id], onDelete: SetNull)
+  action       String
+  oldValue     Json?
+  newValue     Json?
+  createdAt    DateTime   @default(now())
+
+  @@index([adCampaignId, createdAt(sort: Desc)])
+}
+
+model AdEvent {
+  id           String       @id @default(cuid())
+  adId         String
+  ad           AdCampaign   @relation(fields: [adId], references: [id], onDelete: Cascade)
+  userId       String?
+  sessionId    String?
+  eventType    AdEventType
+  placement    AdPlacement?
+  categoryId   String?
+  cityId       String?
+  device       AdDevice?
+  createdAt    DateTime     @default(now())
+
+  @@index([adId, eventType, createdAt(sort: Desc)])
+  @@index([adId, userId, eventType, createdAt(sort: Desc)])
+  @@index([adId, sessionId, eventType, createdAt(sort: Desc)])
+  @@index([sessionId, createdAt(sort: Desc)])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// НАШЛО БИЗНЕС — B2B-площадка (отдельно от Listing и BusinessClient CRM)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum CompanyType {
+  IP
+  LLC
+  SELF_EMPLOYED
+  COMPANY
+  OTHER
+}
+
+enum BusinessRole {
+  SUPPLIER
+  BUYER
+  MANUFACTURER
+  DISTRIBUTOR
+  WHOLESALER
+  SERVICE_PROVIDER
+  INVESTOR
+  FRANCHISOR
+  BUSINESS_SELLER
+  BUSINESS_BUYER
+}
+
+enum CompanyVerificationStatus {
+  DRAFT
+  PENDING_REVIEW
+  VERIFIED
+  REJECTED
+  BLOCKED
+}
+
+enum CompanyMemberRole {
+  OWNER
+  ADMIN
+  MANAGER
+  SALES
+  SUPPORT
+  VIEWER
+}
+
+enum BusinessListingType {
+  WHOLESALE_OFFER
+  SUPPLY
+  BUSINESS_FOR_SALE
+  FRANCHISE
+  EQUIPMENT
+  COMMERCIAL_REAL_ESTATE
+  SERVICE_FOR_BUSINESS
+  PROCUREMENT_REQUEST
+  PARTNERSHIP
+  INVESTMENT
+}
+
+enum BusinessListingStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  REJECTED
+  PAUSED
+  ARCHIVED
+  BLOCKED
+}
+
+enum BusinessRequestStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  CLOSED
+  ARCHIVED
+  BLOCKED
+}
+
+/// Компания на B2B-площадке «Нашло Бизнес»
+model Company {
+  id                 String                    @id @default(cuid())
+  ownerId            String
+  owner              User                      @relation("CompanyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  name               String
+  legalName          String?
+  inn                String?
+  ogrn               String?
+  kpp                String?
+  companyType        CompanyType               @default(LLC)
+  businessRole       BusinessRole              @default(SUPPLIER)
+  industry           String?
+  description        String?
+  region             String?
+  city               String?
+  address            String?
+  websiteUrl         String?
+  vkUrl              String?
+  maxUrl             String?
+  contactName        String?
+  contactRole        String?
+  contactPhone       String?
+  contactEmail       String?
+  verificationStatus CompanyVerificationStatus @default(PENDING_REVIEW)
+  trustStatus        String                    @default("NORMAL")
+  rejectionReason    String?
+  isPublic           Boolean                   @default(false)
+  isBlocked          Boolean                   @default(false)
+  publicSlug         String?                   @unique
+  logoUrl            String?
+  coverUrl           String?
+  shortDescription   String?
+  catalogEnabled     Boolean                   @default(true)
+  profileCompleteness Int                      @default(0)
+  companyDeliveryRegions String[]              @default([])
+  paymentTerms       String?
+  vatType            String?
+  minOrderInfo       String?
+  showPhonePublicly  Boolean                   @default(false)
+  showEmailPublicly  Boolean                   @default(false)
+  showWebsitePublicly Boolean                  @default(true)
+  showRequisitesPublicly Boolean               @default(false)
+  showDocumentsPublicly Boolean                @default(false)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  members            CompanyMember[]
+  listings           BusinessListing[]
+  requests           BusinessRequest[]
+  catalogCategories  BusinessCatalogCategory[]
+  inquiriesReceived  BusinessInquiry[]         @relation("InquiryToCompany")
+  conversations      Conversation[]            @relation("CompanyConversations")
+  documents          CompanyDocument[]
+  reviews            CompanyReview[]
+  reports            Report[]                  @relation("ReportCompany")
+
+  @@index([ownerId])
+  @@index([verificationStatus])
+  @@index([inn])
+  @@index([isPublic, verificationStatus])
+}
+
+model CompanyMember {
+  id        String            @id @default(cuid())
+  companyId String
+  company   Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      CompanyMemberRole @default(VIEWER)
+  invitedAt DateTime          @default(now())
+  acceptedAt DateTime?
+
+  @@unique([companyId, userId])
+  @@index([userId])
+}
+
+model BusinessListing {
+  id               String                @id @default(cuid())
+  slug             String?               @unique
+  companyId        String
+  company          Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  ownerId          String
+  type             BusinessListingType
+  category         String
+  subcategory      String?
+  title            String
+  description      String
+  price            Int                   @default(0)
+  priceFrom        Int?
+  priceTo          Int?
+  priceType        String                @default("FIXED")
+  priceUnit        String?
+  minOrderQuantity Int?
+  wholesalePrice   Int?
+  wholesaleTiers   Json?
+  availabilityStatus String?
+  productionTime   String?
+  deliveryTime     String?
+  pickupAvailable  Boolean               @default(false)
+  deliveryAvailable Boolean              @default(true)
+  paymentTerms     String?
+  vatType          String?
+  catalogCategoryId String?
+  catalogCategory  BusinessCatalogCategory? @relation(fields: [catalogCategoryId], references: [id], onDelete: SetNull)
+  currency         String                @default("RUB")
+  region           String?
+  city             String?
+  deliveryRegions  String[]              @default([])
+  images           String[]              @default([])
+  documents        String[]              @default([])
+  attributes       Json?
+  status           BusinessListingStatus @default(PENDING)
+  rejectionReason  String?
+  isPromoted       Boolean               @default(false)
+  views            Int                   @default(0)
+  inquiries        BusinessInquiry[]
+  conversations    Conversation[]
+  reports          Report[]              @relation("ReportBusinessListing")
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([companyId])
+  @@index([ownerId])
+  @@index([status, type])
+  @@index([category, city])
+  @@index([catalogCategoryId])
+  @@index([createdAt(sort: Desc)])
+}
+
+enum CompanyDocumentType {
+  CERTIFICATE
+  LICENSE
+  PRICE_LIST
+  PRESENTATION
+  OTHER
+}
+
+enum CompanyReviewStatus {
+  PENDING
+  PUBLISHED
+  HIDDEN
+}
+
+model CompanyDocument {
+  id        String              @id @default(cuid())
+  companyId String
+  company   Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title     String
+  fileUrl   String
+  docType   CompanyDocumentType @default(OTHER)
+  isPublic  Boolean             @default(false)
+  createdAt DateTime            @default(now())
+
+  @@index([companyId, isPublic])
+}
+
+model CompanyReview {
+  id        String              @id @default(cuid())
+  companyId String
+  company   Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User                @relation("CompanyReviewsAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+  rating    Int
+  comment   String
+  status    CompanyReviewStatus @default(PUBLISHED)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([companyId, authorId])
+  @@index([companyId, status])
+  @@index([authorId])
+}
+
+model BusinessCatalogCategory {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title       String
+  slug        String
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  listings BusinessListing[]
+
+  @@unique([companyId, slug])
+  @@index([companyId, sortOrder])
+}
+
+enum BusinessInquiryType {
+  PRICE_REQUEST
+  COMMERCIAL_OFFER
+  WHOLESALE_REQUEST
+  PARTNERSHIP
+  CALLBACK
+}
+
+enum BusinessInquiryStatus {
+  NEW
+  IN_PROGRESS
+  ANSWERED
+  CLOSED
+  SPAM
+}
+
+model BusinessInquiry {
+  id                String              @id @default(cuid())
+  fromUserId        String?
+  fromUser          User?               @relation("BusinessInquiryFromUser", fields: [fromUserId], references: [id], onDelete: SetNull)
+  fromCompanyId     String?
+  toCompanyId       String
+  toCompany         Company             @relation("InquiryToCompany", fields: [toCompanyId], references: [id], onDelete: Cascade)
+  businessListingId String?
+  businessListing   BusinessListing?    @relation(fields: [businessListingId], references: [id], onDelete: SetNull)
+  type              BusinessInquiryType @default(PRICE_REQUEST)
+  contactName       String?
+  contactCompany    String?
+  quantity          String?
+  city              String?
+  message           String?
+  contactPhone      String?
+  contactEmail      String?
+  status            BusinessInquiryStatus @default(NEW)
+  conversation      Conversation?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([toCompanyId, status])
+  @@index([fromUserId])
+  @@index([createdAt(sort: Desc)])
+}
+
+/// Заявка на закупку (MVP: базовая модель)
+model BusinessRequest {
+  id          String                @id @default(cuid())
+  companyId   String
+  company     Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  category    String
+  quantity    String?
+  budgetFrom  Int?
+  budgetTo    Int?
+  region      String?
+  city        String?
+  deadline    DateTime?
+  status      BusinessRequestStatus @default(PENDING)
+  conversations Conversation[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([companyId])
   @@index([status])
 }

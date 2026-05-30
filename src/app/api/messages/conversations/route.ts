@@ -1,7 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import { notifyRecipientNewMessage } from '@/lib/push/notify-new-message'
+import { canSendMarketplaceMessage } from '@/lib/messaging-trust'
+import { personalConversationWhere, PERSONAL_CONVERSATION_TYPE, countUnreadInConversation } from '@/lib/messaging/scope'
+import { conversationListInclude } from '@/lib/messaging/conversation-include'
 import { z } from 'zod'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
@@ -11,45 +17,19 @@ export async function GET() {
     }
 
     const conversations = await prisma.conversation.findMany({
-      where: {
-        isSupport: false,
-        members: { some: { userId: user.id } },
-      },
-      include: {
-        members: {
-          include: {
-            user: {
-              select: { id: true, name: true, avatar: true, phone: true },
-            },
-          },
-        },
-        listing: {
-          select: { id: true, title: true, price: true, images: true },
-        },
-        messages: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          include: {
-            sender: { select: { id: true, name: true, avatar: true } },
-          },
-        },
-      },
+      where: personalConversationWhere(user.id),
+      include: conversationListInclude,
       orderBy: { updatedAt: 'desc' },
     })
 
-    // Calculate unread count per conversation
     const result = await Promise.all(
       conversations.map(async (conv) => {
         const member = conv.members.find((m) => m.userId === user.id)
-        const unreadCount = await prisma.message.count({
-          where: {
-            conversationId: conv.id,
-            senderId: { not: user.id },
-            ...(member?.lastReadAt
-              ? { createdAt: { gt: member.lastReadAt } }
-              : {}),
-          },
-        })
+        const unreadCount = await countUnreadInConversation(
+          conv.id,
+          user.id,
+          member?.lastReadAt,
+        )
         return {
           ...conv,
           lastMessage: conv.messages[0] || null,
@@ -85,9 +65,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Нельзя писать самому себе' }, { status: 400 })
     }
 
+    const gate = await canSendMarketplaceMessage(user.id, { recipientId })
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.message }, { status: 403 })
+    }
+
+    if (listingId) {
+      const listing = await prisma.listing.findUnique({
+        where: { id: listingId },
+        select: { sellerId: true },
+      })
+      if (!listing) {
+        return NextResponse.json({ error: 'Объявление не найдено' }, { status: 404 })
+      }
+      if (listing.sellerId === user.id) {
+        return NextResponse.json(
+          { error: 'Нельзя начать переписку по своему объявлению' },
+          { status: 400 },
+        )
+      }
+      if (recipientId !== listing.sellerId) {
+        return NextResponse.json({ error: 'Неверный получатель сообщения' }, { status: 400 })
+      }
+    }
+
     // Check if conversation already exists
     let conversation = await prisma.conversation.findFirst({
       where: {
+        conversationType: PERSONAL_CONVERSATION_TYPE,
         listingId: listingId || null,
         members: {
           every: { userId: { in: [user.id, recipientId] } },
@@ -102,6 +107,8 @@ export async function POST(request: NextRequest) {
     if (!conversation) {
       conversation = await prisma.conversation.create({
         data: {
+          conversationType: PERSONAL_CONVERSATION_TYPE,
+          contextType: listingId ? 'LISTING' : 'DIRECT',
           listingId: listingId || null,
           members: {
             create: [{ userId: user.id }, { userId: recipientId }],
@@ -115,6 +122,7 @@ export async function POST(request: NextRequest) {
         text: message,
         conversationId: conversation.id,
         senderId: user.id,
+        senderType: 'USER',
       },
       include: {
         sender: { select: { id: true, name: true, avatar: true } },
@@ -126,6 +134,17 @@ export async function POST(request: NextRequest) {
       data: { updatedAt: new Date() },
     })
 
+    const preview = message.length > 200 ? `${message.slice(0, 200)}…` : message
+    const senderName = newMessage.sender?.name ?? null
+    if (recipientId !== user.id) {
+      void notifyRecipientNewMessage({
+        recipientUserId: recipientId,
+        senderName,
+        messageText: preview,
+        conversationId: conversation.id,
+      })
+    }
+
     return NextResponse.json({ conversation, message: newMessage }, { status: 201 })
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -134,3 +153,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
   }
 }
+
